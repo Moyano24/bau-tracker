@@ -350,13 +350,15 @@ td{padding:var(--s2); border-top:1px solid var(--line)}
   grid-auto-columns:1fr}
 .tierbar i{display:block}
 
-.cpick{display:flex; gap:var(--s2); flex-wrap:wrap}
-.sw-btn{width:36px; height:36px; border-radius:9px; border:2px solid transparent;
+/* Grilla de 8 por fila (vivos, vivos, suaves, oscuros): las casillas se achican con el
+   ancho para que entren 8 hasta en un celular chico. */
+.cpick{display:grid; grid-template-columns:repeat(8, minmax(0, 40px)); gap:var(--s2)}
+.sw-btn{width:100%; aspect-ratio:1; border-radius:9px; border:2px solid transparent;
   cursor:pointer; padding:0}
 .sw-btn[aria-pressed="true"]{border-color:var(--line-fuerte); outline:2px solid var(--bg); outline-offset:-4px}
 /* El selector libre del navegador: un cuadrito más de la fila. */
-.sw-libre{display:inline-flex; width:36px; height:36px; margin:0}
-.sw-libre input{width:36px; height:36px; padding:0; border:2px dashed var(--line-fuerte); background:none; cursor:pointer}
+.sw-libre{display:inline-flex; width:100%; aspect-ratio:1; margin:0}
+.sw-libre input{width:100%; height:100%; padding:0; border:2px dashed var(--line-fuerte); background:none; cursor:pointer}
 .fields[hidden]{display:none}
 .fields + .field{margin-top:var(--s3)}
 
@@ -367,11 +369,21 @@ td{padding:var(--s2); border-top:1px solid var(--line)}
   background:var(--tinta, var(--accent)); color:var(--sobre, var(--accent-text)); font-size:24px;
 }
 .iconos-panel{
-  max-height:230px; overflow-y:auto; margin-top:var(--s2); padding:var(--s2);
+  max-height:340px; overflow-y:auto; margin-top:var(--s2); padding:var(--s2);
   border:1px solid var(--line); background:var(--surface);
 }
 .iconos-panel[hidden]{display:none}
-.icono-grupo + .icono-grupo{margin-top:var(--s3)}
+.icono-grupo + .icono-grupo{margin-top:var(--s2)}
+.icono-grupo[hidden], .ico-btn[hidden]{display:none}
+.icono-grupo > summary{display:flex; justify-content:space-between; align-items:center; gap:var(--s2);
+  min-height:40px; padding:0 var(--s2); cursor:pointer; font-size:var(--t-sm); font-weight:600;
+  border-radius:var(--r1); background:var(--surface-2); list-style:none}
+.icono-grupo > summary::-webkit-details-marker{display:none}
+.icono-grupo > summary::after{content:'+'; margin-left:auto; color:var(--muted); font-weight:700}
+.icono-grupo[open] > summary::after{content:'–'}
+.icono-grupo[open] > .icono-grid{margin-top:var(--s2)}
+.ico-buscar{position:sticky; top:calc(-1 * var(--s2)); z-index:1; margin-bottom:var(--s2)}
+.ico-nada{margin:var(--s2) 0}
 .icono-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(44px, 1fr)); gap:var(--s1); margin-top:var(--s1)}
 .ico-btn{
   width:100%; min-height:44px; padding:0; display:grid; place-items:center;
@@ -859,6 +871,47 @@ a.btn{text-decoration:none; display:inline-flex; align-items:center; justify-con
 .timer-btn{border-radius:var(--r1)}
 .timer-btn:active{opacity:.6}
 
+/* ---- El reloj: pantalla grande de los temporizadores ----
+   Encima de todo (también del diálogo, 60, y de las píldoras, 70); debajo del aviso (80). */
+.reloj{position:fixed; inset:0; z-index:75; display:grid; place-items:center; overflow-y:auto;
+  padding:calc(env(safe-area-inset-top, 0px) + var(--s4)) var(--s4) calc(env(safe-area-inset-bottom, 0px) + var(--s4));
+  background:var(--bg)}
+.reloj[hidden]{display:none}
+body.reloj-abierto{overflow:hidden}
+.reloj-caja{width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:var(--s4); text-align:center}
+@media (min-width:700px){
+  .reloj{background:color-mix(in srgb, var(--velo-color) 58%, transparent)}
+  .reloj-caja{background:var(--surface); border:1px solid var(--line); border-radius:var(--r3); padding:var(--s6) var(--s5)}
+}
+.reloj-cab h2{font-size:var(--t-lg); margin:0}
+.reloj-sub{margin:var(--s1) 0 0; color:var(--muted); font-size:var(--t-sm)}
+.reloj-anillo{position:relative; width:min(74vw, 300px); aspect-ratio:1}
+.reloj-anillo svg{width:100%; height:100%; transform:rotate(-90deg)}
+.reloj-pista{fill:none; stroke:var(--surface-2); stroke-width:12}
+.reloj-arco{fill:none; stroke:var(--accent); stroke-width:12; stroke-linecap:round; transition:stroke-dashoffset .5s linear}
+.reloj-centro{position:absolute; inset:0; display:grid; place-content:center; gap:var(--s1)}
+.reloj-num{font-family:var(--font-display); font-weight:700; font-size:clamp(56px, 18vw, 84px); line-height:1;
+  font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.reloj-estado{min-height:1.3em; font-size:var(--t-sm); font-weight:700; color:var(--muted)}
+.reloj-fila{display:flex; gap:var(--s2); width:100%}
+.reloj-fila .btn{flex:1 1 0; min-width:0; min-height:48px}
+.reloj-rapidos{display:flex; flex-wrap:wrap; justify-content:center; gap:var(--s2)}
+.ruedas{display:flex; justify-content:center; gap:var(--s4); width:100%}
+.rueda-col{position:relative; display:flex; flex-direction:column; align-items:center; gap:var(--s1); flex:1; max-width:150px}
+/* La franja de la fila elegida: por encima del scroll, sin tapar los toques. */
+.rueda-col::before{content:''; position:absolute; left:0; right:0; top:88px; height:44px; pointer-events:none; z-index:1;
+  border-top:2px solid var(--line-fuerte); border-bottom:2px solid var(--line-fuerte)}
+.rueda{width:100%; height:220px; overflow-y:auto; scroll-snap-type:y mandatory; overscroll-behavior:contain;
+  scrollbar-width:none; border-radius:var(--r2); background:var(--surface-2); touch-action:pan-y}
+.rueda::-webkit-scrollbar{display:none}
+.rueda-pad{height:88px}
+.rueda-item{height:44px; display:grid; place-items:center; scroll-snap-align:center; cursor:pointer;
+  font-family:var(--font-display); font-size:var(--t-lg); color:var(--dim); font-variant-numeric:tabular-nums}
+.rueda-item.sel{color:var(--text); font-weight:700}
+.rueda-rot{font-size:var(--t-xs); font-weight:600; color:var(--muted)}
+.timer-pill.habt{top:calc(env(safe-area-inset-top, 0px) + var(--s2) + 104px)}
+.chk.play{font-size:var(--t-sm)}
+
 /* ---- Pomodoro ---- */
 .pomo-reloj{font-family:var(--font-display); font-size:clamp(56px, 16vw, 88px); font-weight:700; line-height:1; letter-spacing:-.01em; text-align:center; margin-top:var(--s3)}
 .pomo-fase{text-align:center; font-weight:700}
@@ -914,6 +967,10 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
 .imp-nuevo select + select{margin-top:var(--s2)}
 .imp-incluir{display:flex; align-items:center; gap:var(--s2); margin-top:var(--s3); font-size:var(--t-sm); min-height:40px}
 .imp-incluir input{width:20px; height:20px; flex:none}
+.min-dias{display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:var(--s1); margin-top:var(--s2)}
+.min-dias[hidden], .min-dia[hidden]{display:none}
+.min-dia{display:flex; flex-direction:column; align-items:center; gap:2px; font-size:var(--t-xs); font-weight:700; color:var(--muted)}
+.min-dia input{text-align:center; padding:var(--s2) 2px}
 .setrow{display:grid; grid-template-columns:24px 1fr 1fr 30px; gap:var(--s2); align-items:center; margin-bottom:var(--s2)}
 .setrow input{padding:var(--s2)}
 .rir{display:flex; gap:var(--s1); flex-wrap:wrap}
@@ -1047,11 +1104,19 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
 <div id="pomo-pill" class="timer-pill pomo" role="timer" aria-label="Pomodoro" hidden>
   <span class="timer-txt" id="pomo-pill-txt">Estudio</span>
   <span class="timer-num" id="pomo-pill-num">00:00</span>
-  <button class="timer-btn" data-act="go-sec" data-view="personal" aria-label="Ver el pomodoro">Ver</button>
+  <button class="timer-btn" data-act="reloj-abrir" data-fuente="pomo" aria-label="Ver el pomodoro en grande">Ver</button>
   <i class="timer-strip" id="pomo-pill-strip"></i>
 </div>
+<div id="hab-pill" class="timer-pill habt" role="timer" aria-label="Temporizador del hábito" hidden>
+  <span class="timer-txt" id="hab-pill-txt">Hábito</span>
+  <span class="timer-num" id="hab-pill-num">00:00</span>
+  <button class="timer-btn" data-act="reloj-abrir" data-fuente="habito" aria-label="Ver el temporizador en grande">Ver</button>
+  <i class="timer-strip" id="hab-pill-strip"></i>
+</div>
+<div id="reloj" class="reloj" role="dialog" aria-modal="true" aria-labelledby="reloj-tit" hidden></div>
 <div id="timer-pill" class="timer-pill" role="timer" aria-label="Descanso" hidden>
   <span class="timer-num" id="timer-num">00:00</span>
+  <button class="timer-btn" data-act="reloj-abrir" data-fuente="descanso" aria-label="Ver el temporizador en grande">Ver</button>
   <button class="timer-btn" data-act="timer-ajustar" data-d="-15" aria-label="Restar 15 segundos">−15</button>
   <button class="timer-btn" data-act="timer-ajustar" data-d="15" aria-label="Sumar 15 segundos">+15</button>
   <button class="timer-btn" data-act="timer-parar" aria-label="Parar el temporizador">✕</button>
@@ -1086,10 +1151,14 @@ const TIERS = [
    más abajo todavía no existe en ese momento (daría un error de zona muerta).
    Elegidos midiendo: con la tinta que `tintaSobre` les asigna, ninguno baja de
    4,5:1 (el mínimo para texto normal). Hay vivos de los que piden tinta oscura
-   (amarillo, lima, celeste) y oscuros de los que piden blanca. */
+   (amarillo, lima, celeste) y oscuros de los que piden blanca. Van de a 8 por fila:
+   dos filas de vivos, una de suaves (todos con tinta oscura) y una de oscuros. */
 const HABIT_COLORS = ['#E8501C','#D93A3A','#D81B60','#9C27B0','#5C4FD6','#1E88E5','#00A6C8','#00967F',
-                      '#43A047','#8DB600','#F6BE00','#F58A07','#8D5B3A','#546E7A','#1F6E96','#2B7A52'];
+                      '#43A047','#8DB600','#F6BE00','#F58A07','#8D5B3A','#546E7A','#1F6E96','#2B7A52',
+                      '#F4A6B8','#F7B58C','#F3D77A','#9EDCB8','#9CCFEF','#B9A7EB','#DDA5DD','#D9C5A3',
+                      '#8E1B3A','#5A2A6E','#1B3A6B','#0B5563','#1F5E3A','#556B2F','#5D3A1A','#3A3F47'];
 const TINTA_OSCURA = '#1B1A16';
+const MAX_MIN_HABITO = 600;      // un hábito de tiempo: hasta 10 horas por día
 const esColorHex = c => typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c);
 /* Una fecha AAAA-MM-DD que existe de verdad: "2026-02-30" tiene la forma pero no
    existe (new Date la corre al 2 de marzo), y eso se nota porque al volver a
@@ -1187,80 +1256,356 @@ function normalizarCategorias(lista){
    Va acá, en CONFIG, porque se consulta al cargar (ver HABIT_COLORS). */
 const ICONOS = {
   // ---- Arte
-  'pincel':     { n:'Pincel',     g:'arte', d:'<path d="M20 4L11 13"/><path d="M11 13C9 12 6.5 13 6.5 15.5C6.5 17 5.5 18 4 19C7 20 11 20 12 16.5C12.5 15 12 14 11 13Z"/>' },
-  'paleta':     { n:'Paleta',     g:'arte', d:'<path d="M12 3C7 3 3 7 3 12C3 17 7 21 12 21C13.5 21 14.5 20 14.5 18.8C14.5 17.6 13.8 17 13.8 16C13.8 14.8 14.8 14 16 14H18C19.7 14 21 12.7 21 11C21 6.5 17 3 12 3Z"/><circle cx="7.5" cy="11" r=".6"/><circle cx="10" cy="7.5" r=".6"/><circle cx="14.5" cy="7.5" r=".6"/>' },
-  'nota':       { n:'Música',     g:'arte', d:'<path d="M9 18V6L19 4V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>' },
-  'camara':     { n:'Cámara',     g:'arte', d:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7L9.5 4H14.5L16 7"/><circle cx="12" cy="13.5" r="3.5"/>' },
-  'microfono':  { n:'Micrófono',  g:'arte', d:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11C5 15 8 18 12 18C16 18 19 15 19 11"/><path d="M12 18V21"/>' },
+  'pincel':     { n:'Pincel',     g:'arte', k:'pintar arte dibujo', d:'<path d="M20 4L11 13"/><path d="M11 13C9 12 6.5 13 6.5 15.5C6.5 17 5.5 18 4 19C7 20 11 20 12 16.5C12.5 15 12 14 11 13Z"/>' },
+  'paleta':     { n:'Paleta',     g:'arte', k:'pintar colores', d:'<path d="M12 3C7 3 3 7 3 12C3 17 7 21 12 21C13.5 21 14.5 20 14.5 18.8C14.5 17.6 13.8 17 13.8 16C13.8 14.8 14.8 14 16 14H18C19.7 14 21 12.7 21 11C21 6.5 17 3 12 3Z"/><circle cx="7.5" cy="11" r=".6"/><circle cx="10" cy="7.5" r=".6"/><circle cx="14.5" cy="7.5" r=".6"/>' },
+  'nota':       { n:'Música',     g:'arte', k:'musica cancion tocar', d:'<path d="M9 18V6L19 4V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>' },
+  'camara':     { n:'Cámara',     g:'arte', k:'foto fotografia', d:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7L9.5 4H14.5L16 7"/><circle cx="12" cy="13.5" r="3.5"/>' },
+  'microfono':  { n:'Micrófono',  g:'arte', k:'cantar voz podcast', d:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11C5 15 8 18 12 18C16 18 19 15 19 11"/><path d="M12 18V21"/>' },
   // ---- Estudio
-  'libro':      { n:'Libro',      g:'estudio', d:'<path d="M12 6C10 4.5 6.5 4 3.5 5V18.5C6.5 17.5 10 18 12 19.5C14 18 17.5 17.5 20.5 18.5V5C17.5 4 14 4.5 12 6Z"/><path d="M12 6V19.5"/>' },
-  'birrete':    { n:'Birrete',    g:'estudio', d:'<path d="M12 5L21 9.5L12 14L3 9.5Z"/><path d="M7 12.2V16C7 17.5 9.5 19 12 19C14.5 19 17 17.5 17 16V12.2"/><path d="M21 9.5V15"/>' },
-  'lapiz':      { n:'Lápiz',      g:'estudio', d:'<path d="M4 20L5 16L16.5 4.5C17.3 3.7 18.7 3.7 19.5 4.5C20.3 5.3 20.3 6.7 19.5 7.5L8 19Z"/><path d="M14.5 6.5L17.5 9.5"/>' },
-  'cuaderno':   { n:'Cuaderno',   g:'estudio', d:'<rect x="6" y="3" width="14" height="18" rx="2"/><path d="M3 7.5H8M3 12H8M3 16.5H8"/><path d="M12 8H17M12 12H17"/>' },
-  'bombilla':   { n:'Idea',       g:'estudio', d:'<path d="M12 3C8.5 3 6 5.7 6 8.8C6 11 7.2 12.5 8.5 13.8C9.2 14.5 9.5 15.3 9.5 16.2V17.5H14.5V16.2C14.5 15.3 14.8 14.5 15.5 13.8C16.8 12.5 18 11 18 8.8C18 5.7 15.5 3 12 3Z"/><path d="M10 20.5H14"/>' },
-  'idiomas':    { n:'Idiomas',    g:'estudio', d:'<path d="M4 4.5H20V15.5H11.5L7 19.5V15.5H4Z"/><path d="M9.5 12L12 6.5L14.5 12M10.5 10.2H13.5"/>' },
+  'libro':      { n:'Libro',      g:'estudio', k:'leer lectura', d:'<path d="M12 6C10 4.5 6.5 4 3.5 5V18.5C6.5 17.5 10 18 12 19.5C14 18 17.5 17.5 20.5 18.5V5C17.5 4 14 4.5 12 6Z"/><path d="M12 6V19.5"/>' },
+  'birrete':    { n:'Birrete',    g:'estudio', k:'facultad universidad estudiar', d:'<path d="M12 5L21 9.5L12 14L3 9.5Z"/><path d="M7 12.2V16C7 17.5 9.5 19 12 19C14.5 19 17 17.5 17 16V12.2"/><path d="M21 9.5V15"/>' },
+  'lapiz':      { n:'Lápiz',      g:'estudio', k:'escribir dibujar', d:'<path d="M4 20L5 16L16.5 4.5C17.3 3.7 18.7 3.7 19.5 4.5C20.3 5.3 20.3 6.7 19.5 7.5L8 19Z"/><path d="M14.5 6.5L17.5 9.5"/>' },
+  'cuaderno':   { n:'Cuaderno',   g:'estudio', k:'apuntes notas diario', d:'<rect x="6" y="3" width="14" height="18" rx="2"/><path d="M3 7.5H8M3 12H8M3 16.5H8"/><path d="M12 8H17M12 12H17"/>' },
+  'bombilla':   { n:'Idea',       g:'estudio', k:'idea pensar', d:'<path d="M12 3C8.5 3 6 5.7 6 8.8C6 11 7.2 12.5 8.5 13.8C9.2 14.5 9.5 15.3 9.5 16.2V17.5H14.5V16.2C14.5 15.3 14.8 14.5 15.5 13.8C16.8 12.5 18 11 18 8.8C18 5.7 15.5 3 12 3Z"/><path d="M10 20.5H14"/>' },
+  'idiomas':    { n:'Idiomas',    g:'estudio', k:'ingles idioma lengua', d:'<path d="M4 4.5H20V15.5H11.5L7 19.5V15.5H4Z"/><path d="M9.5 12L12 6.5L14.5 12M10.5 10.2H13.5"/>' },
   // ---- Finanzas
-  'moneda':     { n:'Moneda',     g:'finanzas', d:'<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5C14 8.7 13.2 8.3 12 8.3C10.5 8.3 9.5 9 9.5 10.2C9.5 11.4 10.5 11.8 12 12C13.5 12.2 14.5 12.6 14.5 13.8C14.5 15 13.5 15.7 12 15.7C10.7 15.7 9.8 15.3 9.3 14.5"/><path d="M12 6.5V8.3M12 15.7V17.5"/>' },
-  'billetera':  { n:'Billetera',  g:'finanzas', d:'<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M6 7V5.5C6 4.7 6.7 4 7.5 4H16.5C17.3 4 18 4.7 18 5.5V7"/><path d="M21 11.5H16.5C15.1 11.5 14 12.6 14 14C14 15.4 15.1 16.5 16.5 16.5H21"/>' },
-  'grafico':    { n:'Gráfico',    g:'finanzas', d:'<path d="M3 3V21H21"/><path d="M7 16L11 11L14 14L20 7"/><path d="M16 7H20V11"/>' },
-  'tarjeta':    { n:'Tarjeta',    g:'finanzas', d:'<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10H21M6.5 15H10"/>' },
+  'moneda':     { n:'Moneda',     g:'finanzas', k:'plata dinero ahorro', d:'<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5C14 8.7 13.2 8.3 12 8.3C10.5 8.3 9.5 9 9.5 10.2C9.5 11.4 10.5 11.8 12 12C13.5 12.2 14.5 12.6 14.5 13.8C14.5 15 13.5 15.7 12 15.7C10.7 15.7 9.8 15.3 9.3 14.5"/><path d="M12 6.5V8.3M12 15.7V17.5"/>' },
+  'billetera':  { n:'Billetera',  g:'finanzas', k:'plata dinero gastos', d:'<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M6 7V5.5C6 4.7 6.7 4 7.5 4H16.5C17.3 4 18 4.7 18 5.5V7"/><path d="M21 11.5H16.5C15.1 11.5 14 12.6 14 14C14 15.4 15.1 16.5 16.5 16.5H21"/>' },
+  'grafico':    { n:'Gráfico',    g:'finanzas', k:'inversion crecer', d:'<path d="M3 3V21H21"/><path d="M7 16L11 11L14 14L20 7"/><path d="M16 7H20V11"/>' },
+  'tarjeta':    { n:'Tarjeta',    g:'finanzas', k:'credito pagar', d:'<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10H21M6.5 15H10"/>' },
   'porcentaje': { n:'Porcentaje', g:'finanzas', d:'<path d="M19 5L5 19"/><circle cx="7.5" cy="7.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/>' },
   // ---- Fitness
-  'mancuerna':  { n:'Mancuerna',  g:'fitness', d:'<path d="M6.5 6.5V17.5M17.5 6.5V17.5M3.5 9V15M20.5 9V15M6.5 12H17.5"/>' },
-  'kettlebell': { n:'Pesa rusa',  g:'fitness', d:'<path d="M7.5 10C6 6 8 3.5 12 3.5C16 3.5 18 6 16.5 10"/><path d="M7.5 10.5C5 12 3.5 14 3.5 16.5C3.5 19 6.5 21 12 21C17.5 21 20.5 19 20.5 16.5C20.5 14 19 12 16.5 10.5Z"/>' },
-  'bicicleta':  { n:'Bicicleta',  g:'fitness', d:'<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16L9.5 8.5H15.5L18 16"/><path d="M9.5 8.5L12.5 16H6"/><path d="M8 6H11"/><path d="M15.5 8.5L14.5 5.5H17"/>' },
-  'pelota':     { n:'Pelota',     g:'fitness', d:'<circle cx="12" cy="12" r="9"/><path d="M12 3V21M3 12H21"/><path d="M5.5 5.5C8.5 8 8.5 16 5.5 18.5M18.5 5.5C15.5 8 15.5 16 18.5 18.5"/>' },
-  'cronometro': { n:'Cronómetro', g:'fitness', d:'<circle cx="12" cy="13.5" r="7.5"/><path d="M10 3H14M12 3V6M12 13.5V9.5M17.5 7.5L19 6"/>' },
-  'pulso':      { n:'Pulso',      g:'fitness', d:'<path d="M3 12H7L9.5 6.5L13.5 17.5L16 12H21"/>' },
-  'montana':    { n:'Montaña',    g:'fitness', d:'<path d="M3 20L9.5 7L14 15L16.5 11L21 20Z"/>' },
+  'mancuerna':  { n:'Mancuerna',  g:'fitness', k:'gym pesas entrenar', d:'<path d="M6.5 6.5V17.5M17.5 6.5V17.5M3.5 9V15M20.5 9V15M6.5 12H17.5"/>' },
+  'kettlebell': { n:'Pesa rusa',  g:'fitness', k:'pesas gym', d:'<path d="M7.5 10C6 6 8 3.5 12 3.5C16 3.5 18 6 16.5 10"/><path d="M7.5 10.5C5 12 3.5 14 3.5 16.5C3.5 19 6.5 21 12 21C17.5 21 20.5 19 20.5 16.5C20.5 14 19 12 16.5 10.5Z"/>' },
+  'bicicleta':  { n:'Bicicleta',  g:'fitness', k:'bici pedalear', d:'<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16L9.5 8.5H15.5L18 16"/><path d="M9.5 8.5L12.5 16H6"/><path d="M8 6H11"/><path d="M15.5 8.5L14.5 5.5H17"/>' },
+  'pelota':     { n:'Pelota',     g:'fitness', k:'deporte futbol', d:'<circle cx="12" cy="12" r="9"/><path d="M12 3V21M3 12H21"/><path d="M5.5 5.5C8.5 8 8.5 16 5.5 18.5M18.5 5.5C15.5 8 15.5 16 18.5 18.5"/>' },
+  'cronometro': { n:'Cronómetro', g:'fitness', k:'tiempo correr', d:'<circle cx="12" cy="13.5" r="7.5"/><path d="M10 3H14M12 3V6M12 13.5V9.5M17.5 7.5L19 6"/>' },
+  'pulso':      { n:'Pulso',      g:'fitness', k:'cardio corazon', d:'<path d="M3 12H7L9.5 6.5L13.5 17.5L16 12H21"/>' },
+  'montana':    { n:'Montaña',    g:'fitness', k:'trekking escalar', d:'<path d="M3 20L9.5 7L14 15L16.5 11L21 20Z"/>' },
   // ---- Nutrición
-  'manzana':    { n:'Manzana',    g:'nutricion', d:'<path d="M12 8C10.5 7 8.5 6.8 7 7.8C5 9.2 4.5 12 5.3 14.8C6.2 18 8.5 20.5 10.5 20.5C11.3 20.5 11.6 20 12 20C12.4 20 12.7 20.5 13.5 20.5C15.5 20.5 17.8 18 18.7 14.8C19.5 12 19 9.2 17 7.8C15.5 6.8 13.5 7 12 8Z"/><path d="M12 8C12 6 12.7 4.5 14 3.5"/>' },
-  'hoja':       { n:'Hoja',       g:'nutricion', d:'<path d="M5 19C4.5 10 10 4.5 19.5 4.5C19.5 14.5 14.5 19.5 5 19Z"/><path d="M5 19L13 11"/>' },
-  'vaso':       { n:'Vaso',       g:'nutricion', d:'<path d="M6.5 4H17.5L16.3 19.5C16.2 20.4 15.5 21 14.6 21H9.4C8.5 21 7.8 20.4 7.7 19.5Z"/><path d="M7 11H17"/>' },
-  'taza':       { n:'Taza',       g:'nutricion', d:'<path d="M4.5 8.5H16.5V14.5C16.5 17.5 14.5 19.5 11.5 19.5H9.5C6.5 19.5 4.5 17.5 4.5 14.5Z"/><path d="M16.5 10H18C19.7 10 20.5 11 20.5 12.3C20.5 13.6 19.7 14.5 18 14.5H16.5"/><path d="M8 3.5C7.3 4.5 8.7 5.5 8 6.5M12 3.5C11.3 4.5 12.7 5.5 12 6.5"/>' },
-  'cubiertos':  { n:'Cubiertos',  g:'nutricion', d:'<path d="M6 3V8.5C6 10 7.2 11 8.5 11C9.8 11 11 10 11 8.5V3M8.5 3V8M8.5 11V21"/><path d="M17 21V3C14.5 5 13.5 8 13.5 11H17"/>' },
-  'huevo':      { n:'Huevo',      g:'nutricion', d:'<path d="M12 3C8 3 5 10 5 14C5 18 8 21 12 21C16 21 19 18 19 14C19 10 16 3 12 3Z"/>' },
+  'manzana':    { n:'Manzana',    g:'nutricion', k:'fruta comer sano', d:'<path d="M12 8C10.5 7 8.5 6.8 7 7.8C5 9.2 4.5 12 5.3 14.8C6.2 18 8.5 20.5 10.5 20.5C11.3 20.5 11.6 20 12 20C12.4 20 12.7 20.5 13.5 20.5C15.5 20.5 17.8 18 18.7 14.8C19.5 12 19 9.2 17 7.8C15.5 6.8 13.5 7 12 8Z"/><path d="M12 8C12 6 12.7 4.5 14 3.5"/>' },
+  'hoja':       { n:'Hoja',       g:'nutricion', k:'verdura vegano planta', d:'<path d="M5 19C4.5 10 10 4.5 19.5 4.5C19.5 14.5 14.5 19.5 5 19Z"/><path d="M5 19L13 11"/>' },
+  'vaso':       { n:'Vaso',       g:'nutricion', k:'agua tomar beber', d:'<path d="M6.5 4H17.5L16.3 19.5C16.2 20.4 15.5 21 14.6 21H9.4C8.5 21 7.8 20.4 7.7 19.5Z"/><path d="M7 11H17"/>' },
+  'taza':       { n:'Taza',       g:'nutricion', k:'cafe te mate', d:'<path d="M4.5 8.5H16.5V14.5C16.5 17.5 14.5 19.5 11.5 19.5H9.5C6.5 19.5 4.5 17.5 4.5 14.5Z"/><path d="M16.5 10H18C19.7 10 20.5 11 20.5 12.3C20.5 13.6 19.7 14.5 18 14.5H16.5"/><path d="M8 3.5C7.3 4.5 8.7 5.5 8 6.5M12 3.5C11.3 4.5 12.7 5.5 12 6.5"/>' },
+  'cubiertos':  { n:'Cubiertos',  g:'nutricion', k:'comer comida', d:'<path d="M6 3V8.5C6 10 7.2 11 8.5 11C9.8 11 11 10 11 8.5V3M8.5 3V8M8.5 11V21"/><path d="M17 21V3C14.5 5 13.5 8 13.5 11H17"/>' },
+  'huevo':      { n:'Huevo',      g:'nutricion', k:'proteina desayuno', d:'<path d="M12 3C8 3 5 10 5 14C5 18 8 21 12 21C16 21 19 18 19 14C19 10 16 3 12 3Z"/>' },
   // ---- Salud
-  'corazon':    { n:'Corazón',    g:'salud', d:'<path d="M12 20C12 20 3.5 15 3.5 8.8C3.5 6 5.6 4 8 4C9.7 4 11.2 4.9 12 6.3C12.8 4.9 14.3 4 16 4C18.4 4 20.5 6 20.5 8.8C20.5 15 12 20 12 20Z"/>' },
-  'gota':       { n:'Gota',       g:'salud', d:'<path d="M12 3.5C12 3.5 5.5 10.5 5.5 14.8C5.5 18.4 8.4 21 12 21C15.6 21 18.5 18.4 18.5 14.8C18.5 10.5 12 3.5 12 3.5Z"/>' },
-  'luna':       { n:'Luna',       g:'salud', d:'<path d="M20 14.8C18.8 15.4 17.5 15.7 16 15.7C11.6 15.7 8 12.1 8 7.7C8 6.2 8.4 4.8 9 3.6C5.7 4.8 3.5 8 3.5 11.8C3.5 16.6 7.4 20.5 12.2 20.5C15.5 20.5 18.4 18.6 20 15.8Z"/>' },
-  'pastilla':   { n:'Pastilla',   g:'salud', d:'<path d="M10 19L19 10A3.5 3.5 0 0 0 14 5L5 14A3.5 3.5 0 0 0 10 19Z"/><path d="M9.5 9.5L14.5 14.5"/>' },
-  'cruz':       { n:'Cruz',       g:'salud', d:'<path d="M9 3H15V9H21V15H15V21H9V15H3V9H9Z"/>' },
-  'respirar':   { n:'Respirar',   g:'salud', d:'<path d="M3 9H14C16 9 17.5 7.5 17.5 5.8C17.5 4.2 16.2 3 14.8 3"/><path d="M3 15H18C19.8 15 21 16 21 17.5C21 19 19.8 20.5 18.2 20.5"/><path d="M3 12H8"/>' },
-  'zen':        { n:'Meditar',    g:'salud', d:'<path d="M12 5C9.5 8 9.5 13 12 17C14.5 13 14.5 8 12 5Z"/><path d="M12 17C8.5 17 5.5 14.5 4.5 10.5C8 10.5 10.5 12.5 12 17Z"/><path d="M12 17C15.5 17 18.5 14.5 19.5 10.5C16 10.5 13.5 12.5 12 17Z"/><path d="M5 20.5H19"/>' },
+  'corazon':    { n:'Corazón',    g:'salud', k:'amor salud', d:'<path d="M12 20C12 20 3.5 15 3.5 8.8C3.5 6 5.6 4 8 4C9.7 4 11.2 4.9 12 6.3C12.8 4.9 14.3 4 16 4C18.4 4 20.5 6 20.5 8.8C20.5 15 12 20 12 20Z"/>' },
+  'gota':       { n:'Gota',       g:'salud', k:'agua tomar beber hidratar', d:'<path d="M12 3.5C12 3.5 5.5 10.5 5.5 14.8C5.5 18.4 8.4 21 12 21C15.6 21 18.5 18.4 18.5 14.8C18.5 10.5 12 3.5 12 3.5Z"/>' },
+  'luna':       { n:'Luna',       g:'salud', k:'dormir noche sueno', d:'<path d="M20 14.8C18.8 15.4 17.5 15.7 16 15.7C11.6 15.7 8 12.1 8 7.7C8 6.2 8.4 4.8 9 3.6C5.7 4.8 3.5 8 3.5 11.8C3.5 16.6 7.4 20.5 12.2 20.5C15.5 20.5 18.4 18.6 20 15.8Z"/>' },
+  'pastilla':   { n:'Pastilla',   g:'salud', k:'remedio vitamina medicina', d:'<path d="M10 19L19 10A3.5 3.5 0 0 0 14 5L5 14A3.5 3.5 0 0 0 10 19Z"/><path d="M9.5 9.5L14.5 14.5"/>' },
+  'cruz':       { n:'Cruz',       g:'salud', k:'salud medico', d:'<path d="M9 3H15V9H21V15H15V21H9V15H3V9H9Z"/>' },
+  'respirar':   { n:'Respirar',   g:'salud', k:'aire respiracion', d:'<path d="M3 9H14C16 9 17.5 7.5 17.5 5.8C17.5 4.2 16.2 3 14.8 3"/><path d="M3 15H18C19.8 15 21 16 21 17.5C21 19 19.8 20.5 18.2 20.5"/><path d="M3 12H8"/>' },
+  'zen':        { n:'Meditar',    g:'salud', k:'meditar calma yoga', d:'<path d="M12 5C9.5 8 9.5 13 12 17C14.5 13 14.5 8 12 5Z"/><path d="M12 17C8.5 17 5.5 14.5 4.5 10.5C8 10.5 10.5 12.5 12 17Z"/><path d="M12 17C15.5 17 18.5 14.5 19.5 10.5C16 10.5 13.5 12.5 12 17Z"/><path d="M5 20.5H19"/>' },
   // ---- Social
-  'personas':   { n:'Personas',   g:'social', d:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20C3.5 16.5 6 14.5 9 14.5C12 14.5 14.5 16.5 14.5 20"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5C19.3 14.5 21 16 21 18.5"/>' },
-  'chat':       { n:'Charla',     g:'social', d:'<path d="M5 4.5H19C20.1 4.5 21 5.4 21 6.5V14.5C21 15.6 20.1 16.5 19 16.5H11L7 20.5V16.5H5C3.9 16.5 3 15.6 3 14.5V6.5C3 5.4 3.9 4.5 5 4.5Z"/><path d="M8 10.5H8.01M12 10.5H12.01M16 10.5H16.01"/>' },
-  'telefono':   { n:'Teléfono',   g:'social', d:'<path d="M5 4H9L11 9L8.5 10.5C9.5 12.5 11.5 14.5 13.5 15.5L15 13L20 15V19C20 19.6 19.6 20 19 20C10.7 20 4 13.3 4 5C4 4.4 4.4 4 5 4Z"/>' },
-  'regalo':     { n:'Regalo',     g:'social', d:'<rect x="4" y="11" width="16" height="10" rx="1"/><rect x="3" y="7.5" width="18" height="3.5" rx="1"/><path d="M12 7.5V21"/><path d="M12 7.5C12 7.5 10.5 3.5 8 4.5C6 5.4 7.5 7.5 12 7.5C16.5 7.5 18 5.4 16 4.5C13.5 3.5 12 7.5 12 7.5Z"/>' },
-  'sonrisa':    { n:'Sonrisa',    g:'social', d:'<circle cx="12" cy="12" r="9"/><path d="M8 14C9 15.8 10.4 16.5 12 16.5C13.6 16.5 15 15.8 16 14"/><path d="M9 9.5H9.01M15 9.5H15.01"/>' },
+  'personas':   { n:'Personas',   g:'social', k:'gente amigos familia', d:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20C3.5 16.5 6 14.5 9 14.5C12 14.5 14.5 16.5 14.5 20"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5C19.3 14.5 21 16 21 18.5"/>' },
+  'chat':       { n:'Charla',     g:'social', k:'mensaje hablar', d:'<path d="M5 4.5H19C20.1 4.5 21 5.4 21 6.5V14.5C21 15.6 20.1 16.5 19 16.5H11L7 20.5V16.5H5C3.9 16.5 3 15.6 3 14.5V6.5C3 5.4 3.9 4.5 5 4.5Z"/><path d="M8 10.5H8.01M12 10.5H12.01M16 10.5H16.01"/>' },
+  'telefono':   { n:'Teléfono',   g:'social', k:'llamar celular', d:'<path d="M5 4H9L11 9L8.5 10.5C9.5 12.5 11.5 14.5 13.5 15.5L15 13L20 15V19C20 19.6 19.6 20 19 20C10.7 20 4 13.3 4 5C4 4.4 4.4 4 5 4Z"/>' },
+  'regalo':     { n:'Regalo',     g:'social', k:'sorpresa cumple', d:'<rect x="4" y="11" width="16" height="10" rx="1"/><rect x="3" y="7.5" width="18" height="3.5" rx="1"/><path d="M12 7.5V21"/><path d="M12 7.5C12 7.5 10.5 3.5 8 4.5C6 5.4 7.5 7.5 12 7.5C16.5 7.5 18 5.4 16 4.5C13.5 3.5 12 7.5 12 7.5Z"/>' },
+  'sonrisa':    { n:'Sonrisa',    g:'social', k:'feliz animo', d:'<circle cx="12" cy="12" r="9"/><path d="M8 14C9 15.8 10.4 16.5 12 16.5C13.6 16.5 15 15.8 16 14"/><path d="M9 9.5H9.01M15 9.5H15.01"/>' },
   // ---- Trabajo
-  'maletin':    { n:'Maletín',    g:'trabajo', d:'<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M9 7.5V6C9 5.2 9.7 4.5 10.5 4.5H13.5C14.3 4.5 15 5.2 15 6V7.5"/><path d="M3 13H21"/><path d="M10.5 13V14.5H13.5V13"/>' },
-  'laptop':     { n:'Computadora',g:'trabajo', d:'<rect x="5" y="5" width="14" height="10" rx="1.5"/><path d="M3 19H21"/>' },
-  'calendario': { n:'Calendario', g:'trabajo', d:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10H20.5M8 3V7M16 3V7"/>' },
-  'lista':      { n:'Lista',      g:'trabajo', d:'<path d="M10 7H20M10 12H20M10 17H20"/><path d="M3.5 6.8L5 8.3L7.3 5.5M3.5 11.8L5 13.3L7.3 10.5M3.5 16.8L5 18.3L7.3 15.5"/>' },
-  'objetivo':   { n:'Objetivo',   g:'trabajo', d:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r=".6"/>' },
-  'reloj':      { n:'Reloj',      g:'trabajo', d:'<circle cx="12" cy="12" r="9"/><path d="M12 7V12L15.5 14"/>' },
+  'maletin':    { n:'Maletín',    g:'trabajo', k:'trabajo oficina', d:'<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M9 7.5V6C9 5.2 9.7 4.5 10.5 4.5H13.5C14.3 4.5 15 5.2 15 6V7.5"/><path d="M3 13H21"/><path d="M10.5 13V14.5H13.5V13"/>' },
+  'laptop':     { n:'Computadora',g:'trabajo', k:'compu notebook programar', d:'<rect x="5" y="5" width="14" height="10" rx="1.5"/><path d="M3 19H21"/>' },
+  'calendario': { n:'Calendario', g:'trabajo', k:'fecha agenda', d:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10H20.5M8 3V7M16 3V7"/>' },
+  'lista':      { n:'Lista',      g:'trabajo', k:'tareas pendientes', d:'<path d="M10 7H20M10 12H20M10 17H20"/><path d="M3.5 6.8L5 8.3L7.3 5.5M3.5 11.8L5 13.3L7.3 10.5M3.5 16.8L5 18.3L7.3 15.5"/>' },
+  'objetivo':   { n:'Objetivo',   g:'trabajo', k:'meta foco', d:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r=".6"/>' },
+  'reloj':      { n:'Reloj',      g:'trabajo', k:'tiempo hora', d:'<circle cx="12" cy="12" r="9"/><path d="M12 7V12L15.5 14"/>' },
   // ---- Momento del día
-  'sol-sale':   { n:'Amanecer',   g:'momento', d:'<path d="M5.5 18A6.5 6.5 0 0 1 18.5 18"/><path d="M3 21H21"/><path d="M12 3V8"/><path d="M9.5 5.5L12 3L14.5 5.5"/>' },
-  'sol':        { n:'Sol',        g:'momento', d:'<circle cx="12" cy="12" r="4"/><path d="M12 3V5M12 19V21M3 12H5M19 12H21M5.6 5.6L7 7M17 17L18.4 18.4M5.6 18.4L7 17M17 7L18.4 5.6"/>' },
-  'sol-pone':   { n:'Atardecer',  g:'momento', d:'<path d="M5.5 18A6.5 6.5 0 0 1 18.5 18"/><path d="M3 21H21"/><path d="M12 3V8"/><path d="M9.5 5.5L12 8L14.5 5.5"/>' },
+  'sol-sale':   { n:'Amanecer',   g:'momento', k:'manana madrugar', d:'<path d="M5.5 18A6.5 6.5 0 0 1 18.5 18"/><path d="M3 21H21"/><path d="M12 3V8"/><path d="M9.5 5.5L12 3L14.5 5.5"/>' },
+  'sol':        { n:'Sol',        g:'momento', k:'dia mediodia', d:'<circle cx="12" cy="12" r="4"/><path d="M12 3V5M12 19V21M3 12H5M19 12H21M5.6 5.6L7 7M17 17L18.4 18.4M5.6 18.4L7 17M17 7L18.4 5.6"/>' },
+  'sol-pone':   { n:'Atardecer',  g:'momento', k:'tarde', d:'<path d="M5.5 18A6.5 6.5 0 0 1 18.5 18"/><path d="M3 21H21"/><path d="M12 3V8"/><path d="M9.5 5.5L12 8L14.5 5.5"/>' },
   // ---- Otros
-  'estrella':   { n:'Estrella',   g:'otros', d:'<path d="M12 3.5L14.6 9.2L20.8 9.8L16.1 13.9L17.5 20L12 16.8L6.5 20L7.9 13.9L3.2 9.8L9.4 9.2Z"/>' },
-  'bandera':    { n:'Bandera',    g:'otros', d:'<path d="M5 21V4M5 4H18L15 8.5L18 13H5"/>' },
-  'llave':      { n:'Llave',      g:'otros', d:'<circle cx="8" cy="8" r="4"/><path d="M11 11L20 20M15.5 15.5L18 13M18 18L20.5 15.5"/>' },
-  'casa':       { n:'Casa',       g:'otros', d:'<path d="M3.5 11L12 3.5L20.5 11"/><path d="M5.5 9.5V20.5H18.5V9.5"/><path d="M10 20.5V14.5H14V20.5"/>' },
-  'fuego':      { n:'Fuego',      g:'otros', d:'<path d="M12 3C12 3 6.5 8.5 6.5 14C6.5 17.6 9 20.5 12 20.5C15 20.5 17.5 17.6 17.5 14C17.5 11.8 16.5 10.2 15.3 9C15.3 10.8 14.4 12 13.2 12C13.2 9 12.8 5.5 12 3Z"/>' },
-  'rayo':       { n:'Rayo',       g:'otros', d:'<path d="M13 3L5 13.5H11.5L10.5 21L19 10H12.5Z"/>' },
-  'nube':       { n:'Nube',       g:'otros', d:'<path d="M7 18.5H17C19.5 18.5 21 17 21 14.7C21 12.5 19.3 11 17.3 11C16.7 7.5 14 5 10.8 5C7.5 5 5.3 7.5 5 10.7C3.8 11.2 3 12.4 3 13.8C3 16.3 4.8 18.5 7 18.5Z"/>' },
-  'planta':     { n:'Planta',     g:'otros', d:'<path d="M12 21V11"/><path d="M12 12.5C12 9 9.5 6.5 5.5 6.5C5.5 10.5 8 12.5 12 12.5Z"/><path d="M12 15C12 11.5 14 9.5 18.5 9.5C18.5 13.5 16 15.5 12 15.5Z"/>' },
-  'candado':    { n:'Candado',    g:'otros', d:'<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5C8 5.3 9.8 3.5 12 3.5C14.2 3.5 16 5.3 16 7.5V10.5"/><path d="M12 14.5V16.5"/>' },
-  'ojo':        { n:'Ojo',        g:'otros', d:'<path d="M3 12C5 7.5 8.3 5.5 12 5.5C15.7 5.5 19 7.5 21 12C19 16.5 15.7 18.5 12 18.5C8.3 18.5 5 16.5 3 12Z"/><circle cx="12" cy="12" r="3"/>' },
+  'estrella':   { n:'Estrella',   g:'otros', k:'favorito logro', d:'<path d="M12 3.5L14.6 9.2L20.8 9.8L16.1 13.9L17.5 20L12 16.8L6.5 20L7.9 13.9L3.2 9.8L9.4 9.2Z"/>' },
+  'bandera':    { n:'Bandera',    g:'otros', k:'meta objetivo', d:'<path d="M5 21V4M5 4H18L15 8.5L18 13H5"/>' },
+  'llave':      { n:'Llave',      g:'otros', k:'abrir', d:'<circle cx="8" cy="8" r="4"/><path d="M11 11L20 20M15.5 15.5L18 13M18 18L20.5 15.5"/>' },
+  'casa':       { n:'Casa',       g:'otros', k:'hogar ordenar limpiar', d:'<path d="M3.5 11L12 3.5L20.5 11"/><path d="M5.5 9.5V20.5H18.5V9.5"/><path d="M10 20.5V14.5H14V20.5"/>' },
+  'fuego':      { n:'Fuego',      g:'otros', k:'racha energia', d:'<path d="M12 3C12 3 6.5 8.5 6.5 14C6.5 17.6 9 20.5 12 20.5C15 20.5 17.5 17.6 17.5 14C17.5 11.8 16.5 10.2 15.3 9C15.3 10.8 14.4 12 13.2 12C13.2 9 12.8 5.5 12 3Z"/>' },
+  'rayo':       { n:'Rayo',       g:'otros', k:'energia rapido', d:'<path d="M13 3L5 13.5H11.5L10.5 21L19 10H12.5Z"/>' },
+  'nube':       { n:'Nube',       g:'otros', k:'clima', d:'<path d="M7 18.5H17C19.5 18.5 21 17 21 14.7C21 12.5 19.3 11 17.3 11C16.7 7.5 14 5 10.8 5C7.5 5 5.3 7.5 5 10.7C3.8 11.2 3 12.4 3 13.8C3 16.3 4.8 18.5 7 18.5Z"/>' },
+  'planta':     { n:'Planta',     g:'otros', k:'regar jardin', d:'<path d="M12 21V11"/><path d="M12 12.5C12 9 9.5 6.5 5.5 6.5C5.5 10.5 8 12.5 12 12.5Z"/><path d="M12 15C12 11.5 14 9.5 18.5 9.5C18.5 13.5 16 15.5 12 15.5Z"/>' },
+  'candado':    { n:'Candado',    g:'otros', k:'privado seguridad', d:'<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5C8 5.3 9.8 3.5 12 3.5C14.2 3.5 16 5.3 16 7.5V10.5"/><path d="M12 14.5V16.5"/>' },
+  'ojo':        { n:'Ojo',        g:'otros', k:'ver vista', d:'<path d="M3 12C5 7.5 8.3 5.5 12 5.5C15.7 5.5 19 7.5 21 12C19 16.5 15.7 18.5 12 18.5C8.3 18.5 5 16.5 3 12Z"/><circle cx="12" cy="12" r="3"/>' },
+  // ---- Tabler (inicio) · íconos de Tabler Icons v3.31.0 (MIT, (c) 2020-2025 Paweł Kuna,
+  //   https://github.com/tabler/tabler-icons/blob/main/LICENSE), generados con
+  //   tools/iconos_tabler.py: no editar a mano, se pisan al volver a correrlo.
+  'pua':           { n:'Púa de guitarra', g:'arte', k:'guitarra musica tocar', d:'<path d="M16 18.5C18 16 20 12 20 8C20 5.05 17.92 3.84 15.8 3.35C14.93 3.12 13.67 3 12 3C10.33 3 9.07 3.12 8.2 3.35C6.08 3.84 4 5.05 4 8C4 11.31 6 16 8 18.5C8.3 18.87 8.62 19.23 8.96 19.58L9.32 19.93A3.9 3.9 0 0 0 14.68 19.93A14.05 14.05 0 0 0 16 18.5Z"/>' },
+  'piano':         { n:'Piano', g:'arte', k:'musica tocar teclado', d:'<path d="M3 5M3 7A2 2 0 0 1 5 5H19A2 2 0 0 1 21 7V17A2 2 0 0 1 19 19H5A2 2 0 0 1 3 17Z"/><path d="M9 19V13"/><path d="M8 5V13H10V5"/><path d="M15 19V13"/><path d="M14 5V13H16V5"/>' },
+  'teatro':        { n:'Teatro', g:'arte', k:'actuar mascaras', d:'<path d="M13.19 9H19.81A2 2 0 0 1 21.8 11.18L21.23 17.37A4 4 0 0 1 17.25 21H15.75A4 4 0 0 1 11.77 17.37L11.2 11.18A2 2 0 0 1 13.19 9Z"/><path d="M15 13H15.01"/><path d="M18 13H18.01"/><path d="M15 16.5C16 17.17 17 17.17 18 16.5"/><path d="M8.63 15.98A4.04 4.04 0 0 1 8.25 16H6.75A4 4 0 0 1 2.77 12.37L2.2 6.18A2 2 0 0 1 4.19 4H10.81A2 2 0 0 1 12.81 6"/><path d="M6 8H6.01"/><path d="M9 8H9.01"/><path d="M6 12C6.76 11.49 7.53 11.37 8.29 11.64"/>' },
+  'pelicula':      { n:'Película', g:'arte', k:'cine video filmar', d:'<path d="M4 4M4 6A2 2 0 0 1 6 4H18A2 2 0 0 1 20 6V18A2 2 0 0 1 18 20H6A2 2 0 0 1 4 18Z"/><path d="M8 4L8 20"/><path d="M16 4L16 20"/><path d="M4 8L8 8"/><path d="M4 16L8 16"/><path d="M4 12L20 12"/><path d="M16 8L20 8"/><path d="M16 16L20 16"/>' },
+  'foto':          { n:'Foto', g:'arte', k:'imagen fotografia', d:'<path d="M15 8H15.01"/><path d="M3 6A3 3 0 0 1 6 3H18A3 3 0 0 1 21 6V18A3 3 0 0 1 18 21H6A3 3 0 0 1 3 18V6Z"/><path d="M3 16L8 11C8.93 10.11 10.07 10.11 11 11L16 16"/><path d="M14 14L15 13C15.93 12.11 17.07 12.11 18 13L21 16"/>' },
+  'pluma':         { n:'Pluma', g:'arte', k:'escribir poesia', d:'<path d="M4 20L14 10M14 5V10H19M10 9V14H15M6 13V18H11M6 13L10 9L14 5"/><path d="M19 10C19.64 9.36 20 8.48 20 7.51A3.52 3.52 0 0 0 16.48 4C15.51 4 14.64 4.37 14 5M11 18L15 14L19 10"/>' },
+  'vinilo':        { n:'Vinilo', g:'arte', k:'disco musica escuchar', d:'<path d="M16 3.94A9 9 0 1 0 21 12"/><path d="M12 12M11 12A1 1 0 1 0 13 12A1 1 0 1 0 11 12"/><path d="M20 4M19 4A1 1 0 1 0 21 4A1 1 0 1 0 19 4"/><path d="M20 4L16.5 14L14 16"/>' },
+  'muestras':      { n:'Muestras de color', g:'arte', k:'colores diseno', d:'<path d="M19 3H15A2 2 0 0 0 13 5V17A4 4 0 0 0 21 17V5A2 2 0 0 0 19 3"/><path d="M13 7.35L11 5.35A2 2 0 0 0 8.17 5.35L5.34 8.18A2 2 0 0 0 5.34 11.01L14.34 20.01"/><path d="M7.3 13H5A2 2 0 0 0 3 15V19A2 2 0 0 0 5 21H17"/><path d="M17 17L17 17.01"/>' },
+  'brocha':        { n:'Brocha', g:'arte', k:'pintar dibujo', d:'<path d="M3 21V17A4 4 0 1 1 7 21H3"/><path d="M21 3A16 16 0 0 0 8.2 13.2"/><path d="M21 3A16 16 0 0 1 10.8 15.8"/><path d="M10.6 9A9 9 0 0 1 15 13.4"/>' },
+  'dibujar':       { n:'Dibujar', g:'arte', k:'dibujo boceto lapiz', d:'<path d="M17.5 10.5L18.5 9.5A2.83 2.83 0 1 0 14.5 5.5L4 16V20H8L10 18"/><path d="M13.5 6.5L17.5 10.5"/><path d="M17.8 20.82L15.63 21.95A0.39 0.39 0 0 1 15.06 21.54L15.47 19.13L13.72 17.43A0.39 0.39 0 0 1 13.94 16.76L16.36 16.41L17.45 14.22A0.39 0.39 0 0 1 18.15 14.22L19.24 16.41L21.66 16.76A0.39 0.39 0 0 1 21.88 17.43L20.12 19.13L20.54 21.54A0.39 0.39 0 0 1 19.97 21.95L17.8 20.82Z"/>' },
+  'birome':        { n:'Birome', g:'arte', k:'lapicera escribir diario', d:'<path d="M14 6L21 13L17 17"/><path d="M5.83 18.17A2.83 2.83 0 0 0 9.83 18.17L20.41 7.59A2 2 0 0 0 20.41 4.76L19.24 3.59A2 2 0 0 0 16.41 3.59L5.83 14.17A2.83 2.83 0 0 0 5.83 18.17Z"/><path d="M4 20L5.77 18.23"/>' },
+  'cantar':        { n:'Cantar', g:'arte', k:'microfono karaoke voz', d:'<path d="M15 12.9A5 5 0 1 0 11.1 9"/><path d="M15 12.9L11.1 9L3.58 17.59A2 2 0 1 0 6.41 20.41L15 12.9Z"/>' },
+  'biblioteca':    { n:'Biblioteca', g:'estudio', k:'libros leer', d:'<path d="M5 4M5 5A1 1 0 0 1 6 4H8A1 1 0 0 1 9 5V19A1 1 0 0 1 8 20H6A1 1 0 0 1 5 19Z"/><path d="M9 4M9 5A1 1 0 0 1 10 4H12A1 1 0 0 1 13 5V19A1 1 0 0 1 12 20H10A1 1 0 0 1 9 19Z"/><path d="M5 8H9"/><path d="M9 16H13"/><path d="M13.8 4.56L15.99 4.03C16.55 3.89 17.12 4.22 17.27 4.76L20.96 18.18A1.02 1.02 0 0 1 20.33 19.4L20.2 19.44L18.01 19.97C17.45 20.11 16.88 19.78 16.73 19.24L13.04 5.82A1.02 1.02 0 0 1 13.67 4.6L13.8 4.56Z"/><path d="M14 9L18 8"/><path d="M16 16L19.92 15.02"/>' },
+  'anotador':      { n:'Anotador', g:'estudio', k:'cuaderno apuntes notas', d:'<path d="M6 4H17A2 2 0 0 1 19 6V18A2 2 0 0 1 17 20H6A1 1 0 0 1 5 19V5A1 1 0 0 1 6 4M9 4V22"/><path d="M13 8L15 8"/><path d="M13 12L15 12"/>' },
+  'abecedario':    { n:'Abecedario', g:'estudio', k:'letras abc vocabulario', d:'<path d="M3 16V10A2 2 0 1 1 7 10V16"/><path d="M3 13H7"/><path d="M10 8V14A2 2 0 1 0 14 14V13A2 2 0 1 0 10 13V14"/><path d="M20.73 12A2 2 0 0 0 17 13V14A2 2 0 0 0 20.73 15.01"/>' },
+  'matematica':    { n:'Matemática', g:'estudio', k:'calculo numeros cuentas', d:'<path d="M19 5H12L8 19L5 13H3"/><path d="M14 13L20 19"/><path d="M14 19L20 13"/>' },
+  'calculadora':   { n:'Calculadora', g:'estudio', k:'cuentas numeros', d:'<path d="M4 3M4 5A2 2 0 0 1 6 3H18A2 2 0 0 1 20 5V19A2 2 0 0 1 18 21H6A2 2 0 0 1 4 19Z"/><path d="M8 7M8 8A1 1 0 0 1 9 7H15A1 1 0 0 1 16 8V9A1 1 0 0 1 15 10H9A1 1 0 0 1 8 9Z"/><path d="M8 14L8 14.01"/><path d="M12 14L12 14.01"/><path d="M16 14L16 14.01"/><path d="M8 17L8 17.01"/><path d="M12 17L12 17.01"/><path d="M16 17L16 17.01"/>' },
+  'quimica':       { n:'Química', g:'estudio', k:'laboratorio ciencia', d:'<path d="M9 3L15 3"/><path d="M10 9L14 9"/><path d="M10 3V9L6 20A0.7 0.7 0 0 0 6.5 21H17.5A0.7 0.7 0 0 0 18 20L14 9V3"/>' },
+  'fisica':        { n:'Física', g:'estudio', k:'atomo ciencia', d:'<path d="M12 12V12.01"/><path d="M19.07 4.93C17.51 3.37 13.07 5.27 9.17 9.17C5.27 13.08 3.37 17.51 4.93 19.07C6.49 20.63 10.93 18.73 14.83 14.83C18.73 10.92 20.63 6.49 19.07 4.93"/><path d="M4.93 4.93C3.37 6.49 5.27 10.93 9.17 14.83C13.08 18.73 17.51 20.63 19.07 19.07C20.63 17.51 18.73 13.07 14.83 9.17C10.92 5.27 6.49 3.37 4.93 4.93"/>' },
+  'microscopio':   { n:'Microscopio', g:'estudio', k:'biologia ciencia', d:'<path d="M5 21H19"/><path d="M6 18H8"/><path d="M7 18V21"/><path d="M9 11L12 14L18 8L15 5Z"/><path d="M10.5 12.5L9 14"/><path d="M17 3L20 6"/><path d="M12 21A6 6 0 0 0 15.71 10.29"/>' },
+  'mundo':         { n:'Mundo', g:'estudio', k:'geografia planeta tierra', d:'<path d="M3 12A9 9 0 1 0 21 12A9 9 0 0 0 3 12"/><path d="M3.6 9H20.4"/><path d="M3.6 15H20.4"/><path d="M11.5 3A17 17 0 0 0 11.5 21"/><path d="M12.5 3A17 17 0 0 1 12.5 21"/>' },
+  'mapa':          { n:'Mapa', g:'estudio', k:'geografia viaje', d:'<path d="M3 7L9 4L15 7L21 4V17L15 20L9 17L3 20V7"/><path d="M9 4V17"/><path d="M15 7V20"/>' },
+  'marcador':      { n:'Marcador', g:'estudio', k:'leer pagina', d:'<path d="M18 7V21L12 17L6 21V7A4 4 0 0 1 10 3H14A4 4 0 0 1 18 7Z"/>' },
+  'escuela':       { n:'Escuela', g:'estudio', k:'colegio facultad clase', d:'<path d="M22 9L12 5L2 9L12 13L22 9V15"/><path d="M6 10.6V16A6 3 0 0 0 18 16V10.6"/>' },
+  'regla':         { n:'Regla', g:'estudio', k:'medir geometria', d:'<path d="M17 3L21 7L7 21L3 17Z"/><path d="M16 7L14.5 5.5"/><path d="M13 10L11.5 8.5"/><path d="M10 13L8.5 11.5"/><path d="M7 16L5.5 14.5"/>' },
+  'escribir':      { n:'Escribir', g:'estudio', k:'redactar ensayo', d:'<path d="M20 17V5C20 3.88 19.12 3 18 3S16 3.88 16 5V17L18 19L20 17Z"/><path d="M16 7H20"/><path d="M18 19H5A2 2 0 1 1 5 15H9A2 2 0 1 0 9 11H6"/>' },
+  'cerebro':       { n:'Cerebro', g:'estudio', k:'mente pensar memoria', d:'<path d="M15.5 13A3.5 3.5 0 0 0 12 16.5V17.5A3.5 3.5 0 0 0 19 17.5V15.7"/><path d="M8.5 13A3.5 3.5 0 0 1 12 16.5V17.5A3.5 3.5 0 0 1 5 17.5V15.7"/><path d="M17.5 16A3.5 3.5 0 0 0 17.5 9H17"/><path d="M19 9.3V6.5A3.5 3.5 0 0 0 12 6.5"/><path d="M6.5 16A3.5 3.5 0 0 1 6.5 9H7"/><path d="M5 9.3V6.5A3.5 3.5 0 0 1 12 6.5V16.5"/>' },
+  'rompecabezas':  { n:'Rompecabezas', g:'estudio', k:'logica juego', d:'<path d="M4 7H7A1 1 0 0 0 8 6V5A2 2 0 0 1 12 5V6A1 1 0 0 0 13 7H16A1 1 0 0 1 17 8V11A1 1 0 0 0 18 12H19A2 2 0 0 1 19 16H18A1 1 0 0 0 17 17V20A1 1 0 0 1 16 21H13A1 1 0 0 1 12 20V19A2 2 0 0 0 8 19V20A1 1 0 0 1 7 21H4A1 1 0 0 1 3 20V17A1 1 0 0 1 4 16H5A2 2 0 0 0 5 12H4A1 1 0 0 1 3 11V8A1 1 0 0 1 4 7"/>' },
+  'presentacion':  { n:'Presentación', g:'estudio', k:'exponer pizarron clase', d:'<path d="M3 4L21 4"/><path d="M4 4V14A2 2 0 0 0 6 16H18A2 2 0 0 0 20 14V4"/><path d="M12 16L12 20"/><path d="M9 20L15 20"/><path d="M8 12L11 9L13 11L16 8"/>' },
+  'certificado':   { n:'Certificado', g:'estudio', k:'titulo diploma curso', d:'<path d="M15 15M12 15A3 3 0 1 0 18 15A3 3 0 1 0 12 15"/><path d="M13 17.5V22L15 20.5L17 22V17.5"/><path d="M10 19H5A2 2 0 0 1 3 17V7C3 5.9 3.9 5 5 5H19A2 2 0 0 1 21 7V17A2 2 0 0 1 20 18.73"/><path d="M6 9L18 9"/><path d="M6 12L9 12"/><path d="M6 15L8 15"/>' },
+  'traducir':      { n:'Traducir', g:'estudio', k:'idioma ingles lengua', d:'<path d="M4 5H11"/><path d="M9 3V5C9 9.42 6.76 13 4 13"/><path d="M5 9C5 11.14 7.95 12.91 11.7 13"/><path d="M12 20L16 11L20 20"/><path d="M19.1 18H12.9"/>' },
+  'examen':        { n:'Examen', g:'estudio', k:'parcial final prueba', d:'<path d="M14 3V7A1 1 0 0 0 15 8H19"/><path d="M5 8V5A2 2 0 0 1 7 3H14L19 8V19A2 2 0 0 1 17 21H12"/><path d="M6 14M3 14A3 3 0 1 0 9 14A3 3 0 1 0 3 14"/><path d="M4.5 17L3 22L6 20.5L9 22L7.5 17"/>' },
+  'chanchito':     { n:'Chanchito', g:'finanzas', k:'ahorrar ahorro alcancia', d:'<path d="M15 11V11.01"/><path d="M5.17 8.38A3 3 0 1 1 9.83 7"/><path d="M16 4V7.8A6.02 6.02 0 0 1 18.66 11H20A1 1 0 0 1 21 12V14A1 1 0 0 1 20 15H18.66C18.32 15.95 17.75 16.8 17 17.47V19.5A1.5 1.5 0 0 1 14 19.5V18.92A6.04 6.04 0 0 1 13 19H9A6.04 6.04 0 0 1 8 18.92V19.5A1.5 1.5 0 0 1 5 19.5V17.5L5 17.47A6 6 0 0 1 9 7H11.5L16 4H16Z"/>' },
+  'efectivo':      { n:'Efectivo', g:'finanzas', k:'plata billete dinero', d:'<path d="M7 15H4A1 1 0 0 1 3 14V6A1 1 0 0 1 4 5H16A1 1 0 0 1 17 6V9"/><path d="M7 9M7 10A1 1 0 0 1 8 9H20A1 1 0 0 1 21 10V18A1 1 0 0 1 20 19H8A1 1 0 0 1 7 18Z"/><path d="M12 14A2 2 0 1 0 16 14A2 2 0 0 0 12 14"/>' },
+  'monedas':       { n:'Monedas', g:'finanzas', k:'plata cambio dinero', d:'<path d="M9 14C9 15.66 11.69 17 15 17S21 15.66 21 14S18.31 11 15 11S9 12.34 9 14Z"/><path d="M9 14V18C9 19.66 11.69 21 15 21S21 19.66 21 18V14"/><path d="M3 6C3 7.07 4.14 8.06 6 8.6S10.14 9.13 12 8.6C13.86 8.06 15 7.07 15 6C15 4.93 13.86 3.94 12 3.4S7.86 2.87 6 3.4C4.14 3.94 3 4.93 3 6Z"/><path d="M3 6V16C3 16.89 3.77 17.45 5 18"/><path d="M3 11C3 11.89 3.77 12.45 5 13"/>' },
+  'recibo':        { n:'Recibo', g:'finanzas', k:'factura ticket gasto', d:'<path d="M5 21V5A2 2 0 0 1 7 3H17A2 2 0 0 1 19 5V21L16 19L14 21L12 19L10 21L8 19L5 21M9 7H15M9 11H15M13 15H15"/>' },
+  'carrito':       { n:'Carrito', g:'finanzas', k:'compras super mercado', d:'<path d="M6 19M4 19A2 2 0 1 0 8 19A2 2 0 1 0 4 19"/><path d="M17 19M15 19A2 2 0 1 0 19 19A2 2 0 1 0 15 19"/><path d="M17 17H6V3H4"/><path d="M6 5L20 6L19 13H6"/>' },
+  'bolsa':         { n:'Bolsa de compras', g:'finanzas', k:'comprar shopping', d:'<path d="M6.33 8H17.67A2 2 0 0 1 19.65 10.3L18.39 18.46A3 3 0 0 1 15.43 21H8.57A3 3 0 0 1 5.61 18.46L4.35 10.3A2 2 0 0 1 6.33 8Z"/><path d="M9 11V6A3 3 0 0 1 15 6V11"/>' },
+  'banco':         { n:'Banco', g:'finanzas', k:'cuenta dinero', d:'<path d="M3 21L21 21"/><path d="M3 10L21 10"/><path d="M5 6L12 3L19 6"/><path d="M4 10L4 21"/><path d="M20 10L20 21"/><path d="M8 14L8 17"/><path d="M12 14L12 17"/><path d="M16 14L16 17"/>' },
+  'torta':         { n:'Gráfico de torta', g:'finanzas', k:'presupuesto porcentaje', d:'<path d="M10 3.2A9 9 0 1 0 20.8 14A1 1 0 0 0 19.8 13H13A2 2 0 0 1 11 11V4A0.9 0.9 0 0 0 10 3.2"/><path d="M15 3.5A9 9 0 0 1 20.5 9H16A1 1 0 0 1 15 8V3.5"/>' },
+  'subida':        { n:'Subida', g:'finanzas', k:'crecer inversion mejora', d:'<path d="M3 17L9 11L13 15L21 7"/><path d="M14 7L21 7L21 14"/>' },
+  'bajada':        { n:'Bajada', g:'finanzas', k:'bajar reducir gasto', d:'<path d="M3 7L9 13L13 9L21 17"/><path d="M21 10L21 17L14 17"/>' },
+  'dolar':         { n:'Dólar', g:'finanzas', k:'plata usd dinero', d:'<path d="M16.7 8A3 3 0 0 0 14 6H10A3 3 0 0 0 10 12H14A3 3 0 0 1 14 18H10A3 3 0 0 1 7.3 16"/><path d="M12 3V6M12 18V21"/>' },
+  'bitcoin':       { n:'Bitcoin', g:'finanzas', k:'cripto inversion', d:'<path d="M6 6H14A3 3 0 0 1 14 12A3 3 0 0 1 14 18H6"/><path d="M8 6L8 18"/><path d="M8 12L14 12"/><path d="M9 3L9 6"/><path d="M13 3L13 6"/><path d="M9 18L9 21"/><path d="M13 18L13 21"/>' },
+  'diamante':      { n:'Diamante', g:'finanzas', k:'joya valor premium', d:'<path d="M6 5H18L21 10L12.5 19.5A0.7 0.7 0 0 1 11.5 19.5L3 10L6 5"/><path d="M10 12L8 9.8L8.6 8.8"/>' },
+  'etiqueta':      { n:'Etiqueta', g:'finanzas', k:'precio oferta', d:'<path d="M7.5 7.5M6.5 7.5A1 1 0 1 0 8.5 7.5A1 1 0 1 0 6.5 7.5"/><path d="M3 6V11.17A2 2 0 0 0 3.59 12.59L11.3 20.3A2.41 2.41 0 0 0 14.7 20.3L20.3 14.7A2.41 2.41 0 0 0 20.3 11.3L12.59 3.59A2 2 0 0 0 11.17 3H6A3 3 0 0 0 3 6Z"/>' },
+  'presupuesto':   { n:'Presupuesto', g:'finanzas', k:'gastos cuentas planilla', d:'<path d="M9 5H7A2 2 0 0 0 5 7V19A2 2 0 0 0 7 21H17A2 2 0 0 0 19 19V7A2 2 0 0 0 17 5H15"/><path d="M9 3M9 5A2 2 0 0 1 11 3H13A2 2 0 0 1 15 5V5A2 2 0 0 1 13 7H11A2 2 0 0 1 9 5Z"/><path d="M14 11H11.5A1.5 1.5 0 0 0 11.5 14H12.5A1.5 1.5 0 0 1 12.5 17H10"/><path d="M12 17V18M12 10V11"/>' },
+  'correr':        { n:'Correr', g:'fitness', k:'running trotar cardio', d:'<path d="M13 4M12 4A1 1 0 1 0 14 4A1 1 0 1 0 12 4"/><path d="M4 17L9 18L9.75 16.5"/><path d="M15 21L15 17L11 14L12 8"/><path d="M7 12L7 9L12 8L15 11L18 12"/>' },
+  'caminar':       { n:'Caminar', g:'fitness', k:'pasos paseo', d:'<path d="M13 4M12 4A1 1 0 1 0 14 4A1 1 0 1 0 12 4"/><path d="M7 21L10 17"/><path d="M16 21L14 17L11 14L12 8"/><path d="M6 12L8 9L12 8L15 11L18 12"/>' },
+  'nadar':         { n:'Nadar', g:'fitness', k:'natacion pileta', d:'<path d="M16 9M15 9A1 1 0 1 0 17 9A1 1 0 1 0 15 9"/><path d="M6 11L10 9L13.5 12L12 14"/><path d="M3 16.75A2.4 2.4 0 0 0 4 17A2.4 2.4 0 0 0 6 16A2.4 2.4 0 0 1 8 15A2.4 2.4 0 0 1 10 16A2.4 2.4 0 0 0 12 17A2.4 2.4 0 0 0 14 16A2.4 2.4 0 0 1 16 15A2.4 2.4 0 0 1 18 16A2.4 2.4 0 0 0 20 17A2.4 2.4 0 0 0 21 16.75"/>' },
+  'yoga':          { n:'Yoga', g:'fitness', k:'elongar postura', d:'<path d="M12 4M11 4A1 1 0 1 0 13 4A1 1 0 1 0 11 4"/><path d="M4 20H8L9.5 17"/><path d="M17 20L16 15H11L12 8"/><path d="M4 10L8 9L12 8L16 9.5L20 11"/>' },
+  'elongar':       { n:'Elongar', g:'fitness', k:'estirar movilidad', d:'<path d="M16 5M15 5A1 1 0 1 0 17 5A1 1 0 1 0 15 5"/><path d="M5 20L10 19.5L11 17.5"/><path d="M18 20V15H12.5L15 8.5L9.5 9.5L11 11.5"/>' },
+  'barra':         { n:'Barra', g:'fitness', k:'gym pesas levantar', d:'<path d="M2 12H3"/><path d="M6 8H4A1 1 0 0 0 3 9V15A1 1 0 0 0 4 16H6"/><path d="M6 7V17A1 1 0 0 0 7 18H8A1 1 0 0 0 9 17V7A1 1 0 0 0 8 6H7A1 1 0 0 0 6 7Z"/><path d="M9 12H15"/><path d="M15 7V17A1 1 0 0 0 16 18H17A1 1 0 0 0 18 17V7A1 1 0 0 0 17 6H16A1 1 0 0 0 15 7Z"/><path d="M18 8H20A1 1 0 0 1 21 9V15A1 1 0 0 1 20 16H18"/><path d="M22 12H21"/>' },
+  'cinta':         { n:'Cinta', g:'fitness', k:'correr gym cardio', d:'<path d="M10 3A1 1 0 1 0 12 3A1 1 0 0 0 10 3"/><path d="M3 14L7 15L7.5 14.5"/><path d="M12 18V15L9 12.08L9.75 7"/><path d="M6 10V8L10 7L12.5 9.5L15 10"/><path d="M21 22A1 1 0 0 0 20 21H4A1 1 0 0 0 3 22"/><path d="M18 21L19 10L21 9"/>' },
+  'futbol':        { n:'Fútbol', g:'fitness', k:'pelota partido', d:'<path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M12 7L16.76 10.45L15 16H9L7.24 10.45Z"/><path d="M12 7V3M15 16L17.5 19M16.76 10.45L20.5 9M9.06 16.05L6.5 19M7.24 10.45L3.5 9"/>' },
+  'basquet':       { n:'Básquet', g:'fitness', k:'basket pelota', d:'<path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M5.65 5.65L18.35 18.35"/><path d="M5.65 18.35L18.35 5.65"/><path d="M12 3A9 9 0 0 0 21 12"/><path d="M3 12A9 9 0 0 1 12 21"/>' },
+  'tenis':         { n:'Tenis', g:'fitness', k:'padel raqueta pelota', d:'<path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M6 5.3A9 9 0 0 1 6 18.7"/><path d="M18 5.3A9 9 0 0 0 18 18.7"/>' },
+  'voley':         { n:'Vóley', g:'fitness', k:'volley pelota', d:'<path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M12 12A8 8 0 0 0 20 16"/><path d="M7.5 13.5A12 12 0 0 0 16 20"/><path d="M12 12A8 8 0 0 0 4.54 16.93"/><path d="M12.95 7.35A12 12 0 0 0 3.07 11.46"/><path d="M12 12A8 8 0 0 0 11.46 3.07"/><path d="M15.55 15.15A12 12 0 0 0 16.93 4.54"/>' },
+  'karate':        { n:'Karate', g:'fitness', k:'artes marciales pelea', d:'<path d="M18 4M17 4A1 1 0 1 0 19 4A1 1 0 1 0 17 4"/><path d="M3 9L7.5 10L10.5 12.5"/><path d="M13 21V13L16 7.5"/><path d="M8 4.5L12 6.5L16 7.5L20 11L18 14.5"/>' },
+  'trofeo':        { n:'Trofeo', g:'fitness', k:'ganar copa logro', d:'<path d="M8 21L16 21"/><path d="M12 17L12 21"/><path d="M7 4L17 4"/><path d="M17 4V12A5 5 0 0 1 7 12V4"/><path d="M5 9M3 9A2 2 0 1 0 7 9A2 2 0 1 0 3 9"/><path d="M19 9M17 9A2 2 0 1 0 21 9A2 2 0 1 0 17 9"/>' },
+  'medalla':       { n:'Medalla', g:'fitness', k:'premio logro', d:'<path d="M12 4V7M8 4V10M16 4V10"/><path d="M12 18.5L9 20L9.5 16.5L7.5 14.5L10.5 14L12 11L13.5 14L16.5 14.5L14.5 16.5L15 20Z"/>' },
+  'zapatilla':     { n:'Zapatilla', g:'fitness', k:'calzado correr', d:'<path d="M4 6H9.43A1 1 0 0 1 10.29 6.5L11.35 8.32A3 3 0 0 0 13.25 9.73L17.93 10.84A4 4 0 0 1 21 14.73V17A1 1 0 0 1 20 18H4A1 1 0 0 1 3 17V7A1 1 0 0 1 4 6Z"/><path d="M14 13L15 11"/><path d="M8 18V17A4 4 0 0 0 4 13H3"/><path d="M10 12L11.5 9"/>' },
+  'escaleras':     { n:'Escaleras', g:'fitness', k:'subir pisos', d:'<path d="M22 6H17V11H12V16H7V21H2"/><path d="M6 10V3"/><path d="M3 6L6 3L9 6"/>' },
+  'pingpong':      { n:'Ping pong', g:'fitness', k:'tenis de mesa paleta', d:'<path d="M12.72 20.71A7.64 7.64 0 0 1 5.24 7.96L5.96 7.24A7.64 7.64 0 0 1 15.06 5.96L17.45 3.61A2.08 2.08 0 0 1 20.51 6.42L20.39 6.55L18.04 8.94A7.64 7.64 0 0 1 16.99 17.8"/><path d="M14 18M11 18A3 3 0 1 0 17 18A3 3 0 1 0 11 18"/><path d="M9.3 5.3L18.7 14.7"/>' },
+  'golf':          { n:'Golf', g:'fitness', k:'bandera hoyo', d:'<path d="M12 18V3L19 7L12 11"/><path d="M9 17.67C8.38 18.03 8 18.49 8 19C8 20.1 9.8 21 12 21S16 20.1 16 19C16 18.5 15.62 18.03 15 17.67"/>' },
+  'skate':         { n:'Skate', g:'fitness', k:'patineta', d:'<path d="M7 15M5 15A2 2 0 1 0 9 15A2 2 0 1 0 5 15"/><path d="M17 15M15 15A2 2 0 1 0 19 15A2 2 0 1 0 15 15"/><path d="M3 9A2 1 0 0 0 5 10H19A2 1 0 0 0 21 9"/>' },
+  'kayak':         { n:'Kayak', g:'fitness', k:'remo agua', d:'<path d="M6.41 6.41A2 2 0 0 0 6.41 3.59L5 2.17L2.17 5L3.59 6.41A2 2 0 0 0 6.41 6.41Z"/><path d="M17.59 17.59A2 2 0 0 0 17.59 20.41L19 21.83L21.83 19L20.41 17.59A2 2 0 0 0 17.59 17.59Z"/><path d="M6.5 6.5L17.5 17.5"/><path d="M22 2.5C12.02 5.1 4.37 10.45 2 22C11.98 19.4 19.63 14.05 22 2.5Z"/><path d="M6.5 12.5L11.5 17.5"/><path d="M12.5 6.5L17.5 11.5"/>' },
+  'balanza':       { n:'Balanza', g:'fitness', k:'peso pesarse', d:'<path d="M7 20L17 20"/><path d="M6 6L12 5L18 6"/><path d="M12 3L12 20"/><path d="M9 12L6 6L3 12A3 3 0 0 0 9 12"/><path d="M21 12L18 6L15 12A3 3 0 0 0 21 12"/>' },
+  'zanahoria':     { n:'Zanahoria', g:'nutricion', k:'verdura vegetal', d:'<path d="M3 21S12.83 17.51 15.68 14.66A4.49 4.49 0 0 0 15.68 8.32A4.48 4.48 0 0 0 9.34 8.32C6.48 11.18 2.99 21 2.99 21Z"/><path d="M9 13L7.5 11.5"/><path d="M16 14L14 12"/><path d="M22 8S20.86 6 19 6C17.59 6 16 8 16 8S17.14 10 19 10S22 8 22 8Z"/><path d="M16 2S14 3.14 14 5S16 8 16 8S18 6.42 18 5C18 3.14 16 2 16 2Z"/>' },
+  'ensalada':      { n:'Ensalada', g:'nutricion', k:'verdura sano', d:'<path d="M4 11H20A1 1 0 0 1 21 12V12.5C21 14 18.48 18.07 17 19V20A1 1 0 0 1 16 21H8A1 1 0 0 1 7 20V19C5.31 17.95 3 14 3 12.5V12A1 1 0 0 1 4 11Z"/><path d="M18.5 11C18.85 9.98 18.93 8.76 19 7.29V6H16.74C13.91 6 12.13 6.8 11.1 8.08"/><path d="M5.25 11.01A12.2 12.2 0 0 1 5 9V8H6.75C7.73 8 8.56 8.12 9.23 8.35"/><path d="M8 8L9 4L13 6.5"/><path d="M13 11V10.5A2.5 2.5 0 1 0 8 10.5V11"/>' },
+  'parrilla':      { n:'Parrilla', g:'nutricion', k:'asado carne proteina', d:'<path d="M19 8H5A6 6 0 0 0 11 14H13A6 6 0 0 0 19 8.22L19 8Z"/><path d="M17 20A2 2 0 1 1 17 16A2 2 0 0 1 17 20Z"/><path d="M15 14L16 16"/><path d="M9 14L6 20"/><path d="M15 18H7"/><path d="M15 5V4"/><path d="M12 5V4"/><path d="M9 5V4"/>' },
+  'pan':           { n:'Pan', g:'nutricion', k:'harina tostada', d:'<path d="M18 4A3 3 0 0 1 20 9.23V18A2 2 0 0 1 18 20H6A2 2 0 0 1 4 18V9.24A3 3 0 0 1 5.82 4.01H18V4Z"/>' },
+  'queso':         { n:'Queso', g:'nutricion', k:'lacteo', d:'<path d="M4.52 20.01L21 20V16.5A2 2 0 1 1 21 12.5V9H4.28"/><path d="M21 9L11.62 4.01C9.1 4.13 6.86 5.43 5.29 7.43C3.87 9.25 3 11.65 3 14.29C3 16.4 3.56 18.37 4.52 20.01"/><path d="M15 13V13.01"/><path d="M8 13V13.01"/><path d="M11 16V16.01"/>' },
+  'pizza':         { n:'Pizza', g:'nutricion', k:'comida chatarra', d:'<path d="M12 21.5C8.96 21.5 6.05 20.79 3.5 19.52L12 3L20.5 19.52A19.09 19.09 0 0 1 12 21.5Z"/><path d="M5.38 15.87A14.94 14.94 0 0 0 12.2 17.5A14.94 14.94 0 0 0 18.7 16.02"/><path d="M13 11.01V11"/><path d="M11 14V13.99"/>' },
+  'hamburguesa':   { n:'Hamburguesa', g:'nutricion', k:'comida chatarra', d:'<path d="M4 15H20A4 4 0 0 1 16 19H8A4 4 0 0 1 4 15Z"/><path d="M12 4C15.78 4 18.95 6.13 19.79 9H4.21C5.05 6.13 8.22 4 12 4Z"/><path d="M5 12H19"/>' },
+  'helado':        { n:'Helado', g:'nutricion', k:'postre dulce', d:'<path d="M12 21.5V17"/><path d="M8 17H16V7A4 4 0 1 0 8 7V17Z"/><path d="M8 10.5L16 7"/><path d="M8 14.5L16 11"/>' },
+  'galletita':     { n:'Galletita', g:'nutricion', k:'dulce snack', d:'<path d="M8 13V13.01"/><path d="M12 17V17.01"/><path d="M12 12V12.01"/><path d="M16 14V14.01"/><path d="M11 8V8.01"/><path d="M13.15 3.48L15.81 4.58A4 4 0 0 0 20.47 10.72L20.52 10.85A3 3 0 0 1 20.52 13.15Q19.78 14.33 19.5 15Q19.22 15.68 18.84 17.22A3 3 0 0 1 17.22 18.84Q15.64 19.23 15 19.5Q14.29 19.8 13.15 20.52A3 3 0 0 1 10.85 20.52Q9.65 19.77 9 19.5Q8.29 19.21 6.78 18.84A3 3 0 0 1 5.16 17.22Q4.76 15.64 4.5 15Q4.2 14.28 3.48 13.15A3 3 0 0 1 3.48 10.85Q4.2 9.74 4.5 9Q4.76 8.38 5.16 6.78A3 3 0 0 1 6.78 5.16Q8.33 4.78 9 4.5Q9.69 4.21 10.85 3.48A3 3 0 0 1 13.15 3.48"/>' },
+  'limon':         { n:'Limón', g:'nutricion', k:'fruta citrico', d:'<path d="M17.54 3.39C21.44 7.3 21.44 13.63 17.54 17.54C13.63 21.44 7.3 21.44 3.39 17.54L17.54 3.39"/><path d="M5.87 15.06A6.5 6.5 0 0 0 15.06 5.87"/><path d="M10.46 10.46L15.06 15.06"/><path d="M10.46 10.46V16.83"/><path d="M10.46 10.46H16.83"/>' },
+  'aji':           { n:'Ají', g:'nutricion', k:'picante verdura', d:'<path d="M13 11C13 13.21 10.76 15 8 15S3 13.21 3 11A8 8 0 1 0 19 11A3 3 0 0 0 13 11"/><path d="M16 8C16 6 18 4 20 4"/>' },
+  'leche':         { n:'Leche', g:'nutricion', k:'lacteo', d:'<path d="M8 6H16V4A1 1 0 0 0 15 3H9A1 1 0 0 0 8 4V6Z"/><path d="M16 6L17.09 7.76A6 6 0 0 1 18 10.93V19A2 2 0 0 1 16 21H8A2 2 0 0 1 6 19V10.93A6 6 0 0 1 6.91 7.76L8 6"/><path d="M12 16M10 16A2 2 0 1 0 14 16A2 2 0 1 0 10 16"/><path d="M10 10H14"/>' },
+  'botella':       { n:'Botella', g:'nutricion', k:'agua tomar', d:'<path d="M10 5H14V3A1 1 0 0 0 13 2H11A1 1 0 0 0 10 3V5Z"/><path d="M14 3.5C14 5.13 14.51 6.71 15.45 8.04L15.5 8.11A8.09 8.09 0 0 1 17 12.8V19A2 2 0 0 1 15 21H9A2 2 0 0 1 7 19V12.8C7 11.12 7.52 9.48 8.5 8.11L8.55 8.04A7.82 7.82 0 0 0 10 3.5"/><path d="M7 14.8A2.4 2.4 0 0 0 8 14A2.4 2.4 0 0 1 10 13A2.4 2.4 0 0 1 12 14A2.4 2.4 0 0 0 14 15A2.4 2.4 0 0 0 16 14A2.4 2.4 0 0 1 17 13.2"/>' },
+  'cerveza':       { n:'Cerveza', g:'nutricion', k:'alcohol birra', d:'<path d="M9 21H15A1 1 0 0 0 16 20V16.38C16 14.98 16.29 13.6 16.84 12.35L17.15 11.65C17.71 10.4 18 9.4 18 8V4A1 1 0 0 0 17 3H7A1 1 0 0 0 6 4V8C6 9.4 6.29 10.4 6.84 11.65L7.15 12.35A9.93 9.93 0 0 1 8 16.38V20A1 1 0 0 0 9 21Z"/><path d="M6 8H18"/>' },
+  'cafe':          { n:'Café', g:'nutricion', k:'cafeina desayuno', d:'<path d="M3 14C3.83 14.64 5.08 15.02 6.5 15C7.92 15.02 9.17 14.64 10 14C10.83 13.36 12.08 12.98 13.5 13C14.92 12.98 16.17 13.36 17 14"/><path d="M8 3A2.4 2.4 0 0 0 7 5A2.4 2.4 0 0 0 8 7"/><path d="M12 3A2.4 2.4 0 0 0 11 5A2.4 2.4 0 0 0 12 7"/><path d="M3 10H17V15A6 6 0 0 1 11 21H9A6 6 0 0 1 3 15V10Z"/><path d="M16.75 16.73A3 3 0 1 0 17 11.17"/>' },
+  'termo':         { n:'Vaso térmico', g:'nutricion', k:'mate cafe', d:'<path d="M5 11H19V8H5Z"/><path d="M17.5 11L16 21H8L6.5 11"/><path d="M6 8V7A2 2 0 0 1 8 5H16A2 2 0 0 1 18 7V8"/><path d="M15 5V3"/>' },
+  'cocinar':       { n:'Cocinar', g:'nutricion', k:'cocina chef receta', d:'<path d="M12 3C13.92 3 15.52 4.35 15.91 6.15A4 4 0 0 1 18 13.87L18 21H6V13.87A4 4 0 1 1 8.09 6.15A4 4 0 0 1 12 3Z"/><path d="M6.16 17.01L18 17"/>' },
+  'sopa':          { n:'Sopa', g:'nutricion', k:'caldo comida', d:'<path d="M4 11H20A1 1 0 0 1 21 12V12.5C21 14 18.48 18.07 17 19V20A1 1 0 0 1 16 21H8A1 1 0 0 1 7 20V19C5.31 17.95 3 14 3 12.5V12A1 1 0 0 1 4 11Z"/><path d="M12 4A2.4 2.4 0 0 0 11 6A2.4 2.4 0 0 0 12 8"/><path d="M16 4A2.4 2.4 0 0 0 15 6A2.4 2.4 0 0 0 16 8"/><path d="M8 4A2.4 2.4 0 0 0 7 6A2.4 2.4 0 0 0 8 8"/>' },
+  'caramelo':      { n:'Caramelo', g:'nutricion', k:'dulce azucar', d:'<path d="M7.05 11.29L11.29 7.05A2 2 0 0 1 14.12 7.05L16.95 9.88A2 2 0 0 1 16.95 12.71L12.71 16.95A2 2 0 0 1 9.88 16.95L7.05 14.12A2 2 0 0 1 7.05 11.29Z"/><path d="M16.24 9.17L19.33 8.4A1.5 1.5 0 0 0 20.03 5.88L17.81 3.67A1.5 1.5 0 0 0 15.37 4.14L14.12 7.05"/><path d="M9.17 16.24L8.4 19.33A1.5 1.5 0 0 1 5.88 20.03L3.67 17.81A1.5 1.5 0 0 1 4.14 15.37L7.05 14.12"/>' },
+  'hongo':         { n:'Hongo', g:'nutricion', k:'champinon', d:'<path d="M20 11.1C20 6.63 16.42 3 12 3S4 6.63 4 11.1A0.9 0.9 0 0 0 4.9 12H19.1A0.9 0.9 0 0 0 20 11.1Z"/><path d="M10 12V19A2 2 0 1 0 14 19V12"/>' },
+  'cereza':        { n:'Cereza', g:'nutricion', k:'fruta', d:'<path d="M7.5 16.5M4 16.5A3.5 3.5 0 1 0 11 16.5A3.5 3.5 0 1 0 4 16.5"/><path d="M17 18M14 18A3 3 0 1 0 20 18A3 3 0 1 0 14 18"/><path d="M9 13C9.37 11 10.87 9.13 13.5 7.4"/><path d="M17 15C15.67 12.67 14.67 9.67 16 6"/><path d="M5 6C8.67 3.33 12.33 3.33 16 6C12.33 8.67 8.67 8.67 5 6"/>' },
+  'copa':          { n:'Copa', g:'nutricion', k:'vino tomar', d:'<path d="M8 21L16 21"/><path d="M12 15L12 21"/><path d="M17 3L18 10C18 13.01 15.31 15 12 15S6 13.01 6 10L7 3H17Z"/><path d="M6 10A5 5 0 0 1 12 10A5 5 0 0 0 18 10"/>' },
+  'huevo-frito':   { n:'Huevo frito', g:'nutricion', k:'desayuno proteina', d:'<path d="M12 12M9 12A3 3 0 1 0 15 12A3 3 0 1 0 9 12"/><path d="M14 3A5 5 0 0 1 18.87 9.13A3 3 0 0 1 19.05 14.81A3 3 0 1 1 14.37 18.44A5 5 0 1 1 5.7 13.44A5 5 0 1 1 10.35 4.58A4.98 4.98 0 0 1 14 3Z"/>' },
+  'espina':        { n:'Espina de pescado', g:'nutricion', k:'pescado comida', d:'<path d="M16.69 7.44A6.97 6.97 0 0 0 15 12A6.97 6.97 0 0 0 16.7 16.57C18.61 15.89 20.39 14.39 22 12.01C20.39 9.62 18.61 8.12 16.69 7.44"/><path d="M2 9.5A40.73 40.73 0 0 0 4.42 12.01A39.68 39.68 0 0 0 2 14.51"/><path d="M18 11V11.01"/><path d="M4.42 12H15"/><path d="M7 10V14"/><path d="M11 8V16"/>' },
+  'latido':        { n:'Latido', g:'salud', k:'corazon pulso cardio', d:'<path d="M19.5 13.57L12 21L9.1 18.13M2.99 10.03A5 5 0 0 1 12 7.01A5 5 0 1 1 19.5 13.58"/><path d="M3 13H5L7 16L9 10L10 13H13"/>' },
+  'estetoscopio':  { n:'Estetoscopio', g:'salud', k:'medico doctor turno', d:'<path d="M6 4H5A2 2 0 0 0 3 6V9.5H3A5.5 5.5 0 0 0 14 9.5V6A2 2 0 0 0 12 4H11"/><path d="M8 15A6 6 0 1 0 20 15V12"/><path d="M11 3V5"/><path d="M6 3V5"/><path d="M20 10M18 10A2 2 0 1 0 22 10A2 2 0 1 0 18 10"/>' },
+  'botiquin':      { n:'Botiquín', g:'salud', k:'primeros auxilios', d:'<path d="M8 8V6A2 2 0 0 1 10 4H14A2 2 0 0 1 16 6V8"/><path d="M4 8M4 10A2 2 0 0 1 6 8H18A2 2 0 0 1 20 10V18A2 2 0 0 1 18 20H6A2 2 0 0 1 4 18Z"/><path d="M10 14H14"/><path d="M12 12V16"/>' },
+  'vacuna':        { n:'Vacuna', g:'salud', k:'inyeccion', d:'<path d="M17 3L21 7"/><path d="M19 5L14.5 9.5"/><path d="M11.5 6.5L17.5 12.5"/><path d="M16.5 11.5L10 18H6V14L12.5 7.5"/><path d="M7.5 12.5L9 14"/><path d="M10.5 9.5L12 11"/><path d="M3 21L6 18"/>' },
+  'jarabe':        { n:'Jarabe', g:'salud', k:'remedio medicina', d:'<path d="M8 21H16A1 1 0 0 0 17 20V10A3 3 0 0 0 14 7H10A3 3 0 0 0 7 10V20A1 1 0 0 0 8 21Z"/><path d="M10 14H14"/><path d="M12 12V16"/><path d="M10 7V4A1 1 0 0 1 11 3H13A1 1 0 0 1 14 4V7"/>' },
+  'dientes':       { n:'Dientes', g:'salud', k:'cepillar dentista', d:'<path d="M12 5.5C10.93 4.91 9.42 4 8 4C5.9 4 4 5.25 4 9C4 13.9 5.06 17.41 6.67 19.54C7.24 20.29 8.64 20.06 9.24 19.3C9.64 18.8 10.06 17.86 10.5 16.5C10.79 15.73 11.39 15 12 15C12.6 15 13.21 15.74 13.5 16.5C13.94 17.86 14.36 18.8 14.76 19.3C15.36 20.06 16.76 20.29 17.33 19.54C18.94 17.41 20 13.9 20 9C20 5.26 18.09 4 16 4C14.58 4 13.08 4.91 12 5.5Z"/><path d="M12 5.5L15 7"/>' },
+  'cama':          { n:'Cama', g:'salud', k:'dormir descansar', d:'<path d="M7 9M5 9A2 2 0 1 0 9 9A2 2 0 1 0 5 9"/><path d="M22 17V14H2"/><path d="M2 8V17"/><path d="M12 14H22V12A3 3 0 0 0 19 9H12V14Z"/>' },
+  'siesta':        { n:'Siesta', g:'salud', k:'dormir sueno', d:'<path d="M4 12H10L4 20H10"/><path d="M14 4H20L14 12H20"/>' },
+  'bano':          { n:'Baño', g:'salud', k:'banarse ducha banadera', d:'<path d="M4 12H20A1 1 0 0 1 21 13V16A4 4 0 0 1 17 20H7A4 4 0 0 1 3 16V13A1 1 0 0 1 4 12Z"/><path d="M6 12V5A2 2 0 0 1 8 3H11V5.25"/><path d="M4 21L5 19.5"/><path d="M20 21L19 19.5"/>' },
+  'anteojos':      { n:'Anteojos', g:'salud', k:'lentes vista', d:'<path d="M8 4H6L3 14"/><path d="M16 4H18L21 14"/><path d="M10 16L14 16"/><path d="M21 16.5A3.5 3.5 0 0 1 14 16.5V14H21V16.5"/><path d="M10 16.5A3.5 3.5 0 0 1 3 16.5V14H10V16.5"/>' },
+  'oido':          { n:'Oído', g:'salud', k:'escuchar oreja', d:'<path d="M6 10A7 7 0 1 1 19 13.6A10 10 0 0 1 17 15.6A8 8 0 0 0 15 18.6A4.5 4.5 0 0 1 8.2 20"/><path d="M10 10A3 3 0 1 1 15 12.2"/>' },
+  'temperatura':   { n:'Temperatura', g:'salud', k:'fiebre termometro', d:'<path d="M10 13.5A4 4 0 1 0 14 13.5V5A2 2 0 0 0 10 5V13.5"/><path d="M10 9L14 9"/>' },
+  'feliz':         { n:'Feliz', g:'salud', k:'animo contento', d:'<path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M9 9L9.01 9"/><path d="M15 9L15.01 9"/><path d="M8 13A4 4 0 1 0 16 13H8"/>' },
+  'triste':        { n:'Triste', g:'salud', k:'animo bajon', d:'<path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M9 10L9.01 10"/><path d="M15 10L15.01 10"/><path d="M9.5 15.25A3.5 3.5 0 0 1 14.5 15.25"/>' },
+  'pulmones':      { n:'Pulmones', g:'salud', k:'respirar aire', d:'<path d="M6.08 20C7.69 20 9 18.66 9 17.02V7.26C9 6.56 8.45 6 7.77 6C7.56 6 7.36 6.05 7.18 6.15L7.05 6.23C5.59 7.29 4.62 8.88 3.65 12.06C3.23 13.43 3.01 15.02 3 16.83C2.99 18.51 4.26 19.89 5.88 19.99L6.08 20Z"/><path d="M17.92 20C16.31 20 15 18.66 15 17.02V7.26C15 6.56 15.55 6 16.23 6C16.44 6 16.64 6.05 16.82 6.15L16.95 6.23C18.41 7.29 19.38 8.88 20.35 12.06C20.77 13.43 20.99 15.02 21 16.83C21.01 18.51 19.74 19.89 18.12 19.99L17.92 20Z"/><path d="M9 12A3 3 0 0 0 12 9A3 3 0 0 0 15 12"/><path d="M12 4V9"/>' },
+  'masaje':        { n:'Masaje', g:'salud', k:'relajar', d:'<path d="M4 17M3 17A1 1 0 1 0 5 17A1 1 0 1 0 3 17"/><path d="M9 5M8 5A1 1 0 1 0 10 5A1 1 0 1 0 8 5"/><path d="M4 22L8 20V17H20"/><path d="M11 20H20"/><path d="M8 14L11 12L12 8C15 9 15 12 15 14"/>' },
+  'sin-fumar':     { n:'Sin fumar', g:'salud', k:'dejar cigarrillo pucho', d:'<path d="M8 13L8 17"/><path d="M16 5V5.5A2 2 0 0 0 18 7.5A2 2 0 0 1 20 9.5V10"/><path d="M3 3L21 21"/><path d="M17 13H20A1 1 0 0 1 21 14V16C21 16.28 20.89 16.53 20.7 16.71M17 17H4A1 1 0 0 1 3 16V14A1 1 0 0 1 4 13H13"/>' },
+  'adn':           { n:'ADN', g:'salud', k:'genetica biologia', d:'<path d="M14.83 14.83A4 4 0 1 0 9.17 9.17A4 4 0 0 0 14.83 14.83Z"/><path d="M9.17 20.48A4 4 0 1 0 3.52 14.83"/><path d="M14.83 3.52A4 4 0 0 0 20.48 9.17"/>' },
+  'sol-alto':      { n:'Sol del mediodía', g:'salud', k:'vitamina d luz', d:'<path d="M14.83 14.83A4 4 0 1 0 9.17 9.17A4 4 0 0 0 14.83 14.83Z"/><path d="M6.34 17.66L4.93 19.07"/><path d="M6.34 6.34L4.93 4.93"/><path d="M17.66 6.34L19.07 4.93"/><path d="M17.66 17.66L19.07 19.07"/><path d="M4 12H2"/><path d="M12 4V2"/><path d="M20 12H22"/><path d="M12 20V22"/>' },
+  'mano':          { n:'Mano', g:'salud', k:'dedo tocar', d:'<path d="M8 13V4.5A1.5 1.5 0 0 1 11 4.5V12"/><path d="M11 11.5V9.5A1.5 1.5 0 1 1 14 9.5V12"/><path d="M14 10.5A1.5 1.5 0 0 1 17 10.5V12"/><path d="M17 11.5A1.5 1.5 0 0 1 20 11.5V16A6 6 0 0 1 14 22H12H12.21A6 6 0 0 1 7.2 19.3A69.74 69.74 0 0 1 7 19C6.69 18.52 5.59 16.61 3.71 13.27A1.5 1.5 0 0 1 4.25 11.25A1.87 1.87 0 0 1 6.53 11.53L8 13"/>' },
+  'virus':         { n:'Virus', g:'salud', k:'enfermedad gripe', d:'<path d="M12 12M7 12A5 5 0 1 0 17 12A5 5 0 1 0 7 12"/><path d="M12 7V3"/><path d="M11 3H13"/><path d="M15.54 8.46L18.36 5.64"/><path d="M17.66 4.93L19.07 6.34"/><path d="M17 12H21"/><path d="M21 11V13"/><path d="M15.54 15.54L18.36 18.36"/><path d="M19.07 17.66L17.66 19.07"/><path d="M12 17V21"/><path d="M13 21H11"/><path d="M8.46 15.54L5.64 18.36"/><path d="M6.34 19.07L4.93 17.66"/><path d="M7 12H3"/><path d="M3 13V11"/><path d="M8.46 8.46L5.64 5.64"/><path d="M4.93 6.34L6.34 4.93"/>' },
+  'grupo':         { n:'Grupo', g:'social', k:'equipo amigos gente', d:'<path d="M10 13A2 2 0 1 0 14 13A2 2 0 0 0 10 13"/><path d="M8 21V20A2 2 0 0 1 10 18H14A2 2 0 0 1 16 20V21"/><path d="M15 5A2 2 0 1 0 19 5A2 2 0 0 0 15 5"/><path d="M17 10H19A2 2 0 0 1 21 12V13"/><path d="M5 5A2 2 0 1 0 9 5A2 2 0 0 0 5 5"/><path d="M3 13V12A2 2 0 0 1 5 10H7"/>' },
+  'persona':       { n:'Persona', g:'social', k:'yo usuario', d:'<path d="M8 7A4 4 0 1 0 16 7A4 4 0 0 0 8 7"/><path d="M6 21V19A4 4 0 0 1 10 15H14A4 4 0 0 1 18 19V21"/>' },
+  'ayudar':        { n:'Ayudar', g:'social', k:'voluntariado solidario', d:'<path d="M19.5 12.57L12 20L4.5 12.57A5 5 0 1 1 12 6.01A5 5 0 1 1 19.5 12.58"/><path d="M12 6L8.71 9.29A1 1 0 0 0 8.71 10.71L9.25 11.25C9.94 11.94 11.06 11.94 11.75 11.25L12.75 10.25A3.18 3.18 0 0 1 17.25 10.25L19.5 12.5"/><path d="M12.5 15.5L14.5 17.5"/><path d="M15 13L17 15"/>' },
+  'mensaje':       { n:'Mensaje', g:'social', k:'chat whatsapp escribir', d:'<path d="M8 9H16"/><path d="M8 13H14"/><path d="M18 4A3 3 0 0 1 21 7V15A3 3 0 0 1 18 18H13L8 21V18H6A3 3 0 0 1 3 15V7A3 3 0 0 1 6 4H18Z"/>' },
+  'mail':          { n:'Mail', g:'social', k:'correo email', d:'<path d="M3 7A2 2 0 0 1 5 5H19A2 2 0 0 1 21 7V17A2 2 0 0 1 19 19H5A2 2 0 0 1 3 17V7Z"/><path d="M3 7L12 13L21 7"/>' },
+  'llamada':       { n:'Llamada', g:'social', k:'llamar telefono', d:'<path d="M5 4H9L11 9L8.5 10.5A11 11 0 0 0 13.5 15.5L15 13L20 15V19A2 2 0 0 1 18 21A16 16 0 0 1 3 6A2 2 0 0 1 5 4"/><path d="M15 7A2 2 0 0 1 17 9"/><path d="M15 3A6 6 0 0 1 21 9"/>' },
+  'fiesta':        { n:'Fiesta', g:'social', k:'festejo celebrar', d:'<path d="M4 5H6"/><path d="M5 4V6"/><path d="M11.5 4L11 6"/><path d="M18 5H20"/><path d="M19 4V6"/><path d="M15 9L14 10"/><path d="M18 13L20 12.5"/><path d="M18 19H20"/><path d="M19 18V20"/><path d="M14 16.52L7.48 10L3.09 19.58A1 1 0 0 0 4.42 20.91L14 16.52Z"/>' },
+  'cumpleanos':    { n:'Cumpleaños', g:'social', k:'torta festejo', d:'<path d="M3 20H21V12A3 3 0 0 0 18 9H6A3 3 0 0 0 3 12V20Z"/><path d="M3 14.8C3.31 14.94 3.65 15.01 4 15A2.4 2.4 0 0 0 6 14A2.4 2.4 0 0 1 8 13A2.4 2.4 0 0 1 10 14A2.4 2.4 0 0 0 12 15A2.4 2.4 0 0 0 14 14A2.4 2.4 0 0 1 16 13A2.4 2.4 0 0 1 18 14A2.4 2.4 0 0 0 20 15C20.35 15.01 20.69 14.94 21 14.8"/><path d="M12 4L13.46 5.64A2 2 0 1 1 10.45 5.74L12 4Z"/>' },
+  'globo':         { n:'Globo', g:'social', k:'fiesta cumple', d:'<path d="M14 8A2 2 0 0 0 12 6"/><path d="M6 8A6 6 0 1 1 18 8C18 12.97 15.31 17 12 17S6 12.97 6 8"/><path d="M12 17V18A2 2 0 0 1 10 20H7A2 2 0 0 0 5 22"/>' },
+  'bebe':          { n:'Bebé', g:'social', k:'hijo cochecito familia', d:'<path d="M8 19M6 19A2 2 0 1 0 10 19A2 2 0 1 0 6 19"/><path d="M18 19M16 19A2 2 0 1 0 20 19A2 2 0 1 0 16 19"/><path d="M2 5H4.5L6.13 9.9A6 6 0 0 0 11.82 14H14.5A5.5 5.5 0 0 0 14.5 3H14V9"/><path d="M6 9H20"/><path d="M9 17L10 14"/><path d="M16 14L17 17"/>' },
+  'amigos':        { n:'Amigos', g:'social', k:'pareja gente', d:'<path d="M7 5M5 5A2 2 0 1 0 9 5A2 2 0 1 0 5 5"/><path d="M5 22V17L4 16V12A1 1 0 0 1 5 11H9A1 1 0 0 1 10 12V16L9 17V22"/><path d="M17 5M15 5A2 2 0 1 0 19 5A2 2 0 1 0 15 5"/><path d="M15 22V18H13L15 12A1 1 0 0 1 16 11H18A1 1 0 0 1 19 12L21 18H19V22"/>' },
+  'pareja':        { n:'Pareja', g:'social', k:'amor novia novio', d:'<path d="M14.02 18L12 20L4.5 12.57A5 5 0 1 1 12 6.01A5 5 0 0 1 20.15 11.79"/><path d="M15.99 20L20.19 15.78A2.81 2.81 0 0 0 20.19 11.83A2.75 2.75 0 0 0 16.28 11.82L16 12.1L15.72 11.82A2.75 2.75 0 0 0 11.81 11.81A2.81 2.81 0 0 0 11.8 15.76L15.98 20Z"/>' },
+  'me-gusta':      { n:'Me gusta', g:'social', k:'like bien', d:'<path d="M7 11V19A1 1 0 0 1 6 20H4A1 1 0 0 1 3 19V12A1 1 0 0 1 4 11H7A4 4 0 0 0 11 7V6A2 2 0 0 1 15 6V11H18A2 2 0 0 1 20 13L19 18A2 3 0 0 1 17 20H10A3 3 0 0 1 7 17"/>' },
+  'anuncio':       { n:'Anuncio', g:'social', k:'megafono avisar', d:'<path d="M18 8A3 3 0 0 1 18 14"/><path d="M10 8V19A1 1 0 0 1 9 20H8A1 1 0 0 1 7 19V14"/><path d="M12 8H12L16.52 4.23A0.9 0.9 0 0 1 18 4.92V17.08A0.9 0.9 0 0 1 16.52 17.77L12 14H4A1 1 0 0 1 3 13V9A1 1 0 0 1 4 8H12"/>' },
+  'compartir':     { n:'Compartir', g:'social', k:'enviar redes', d:'<path d="M6 12M3 12A3 3 0 1 0 9 12A3 3 0 1 0 3 12"/><path d="M18 6M15 6A3 3 0 1 0 21 6A3 3 0 1 0 15 6"/><path d="M18 18M15 18A3 3 0 1 0 21 18A3 3 0 1 0 15 18"/><path d="M8.7 10.7L15.3 7.3"/><path d="M8.7 13.3L15.3 16.7"/>' },
+  'videollamada':  { n:'Videollamada', g:'social', k:'camara zoom meet', d:'<path d="M15 10L19.55 7.72A1 1 0 0 1 21 8.62V15.38A1 1 0 0 1 19.55 16.28L15 14V10Z"/><path d="M3 6M3 8A2 2 0 0 1 5 6H13A2 2 0 0 1 15 8V16A2 2 0 0 1 13 18H5A2 2 0 0 1 3 16Z"/>' },
+  'familia':       { n:'Familia', g:'social', k:'casa hogar padres', d:'<path d="M21 12L12 3L3 12H5V19A2 2 0 0 0 7 21H13"/><path d="M9 21V15A2 2 0 0 1 11 13H13C13.39 13 13.75 13.11 14.06 13.3"/><path d="M19 21.5L21.52 18.92A1.74 1.74 0 0 0 21.52 16.51A1.63 1.63 0 0 0 19.17 16.51L19 16.68L18.84 16.51A1.63 1.63 0 0 0 16.49 16.51A1.74 1.74 0 0 0 16.49 18.92L19 21.51Z"/>' },
+  'codigo':        { n:'Código', g:'trabajo', k:'programar desarrollo web', d:'<path d="M7 8L3 12L7 16"/><path d="M17 8L21 12L17 16"/><path d="M14 4L10 20"/>' },
+  'terminal':      { n:'Terminal', g:'trabajo', k:'consola programar', d:'<path d="M8 9L11 12L8 15"/><path d="M13 15L16 15"/><path d="M3 4M3 6A2 2 0 0 1 5 4H19A2 2 0 0 1 21 6V18A2 2 0 0 1 19 20H5A2 2 0 0 1 3 18Z"/>' },
+  'monitor':       { n:'Monitor', g:'trabajo', k:'pantalla compu pc', d:'<path d="M3 5A1 1 0 0 1 4 4H20A1 1 0 0 1 21 5V15A1 1 0 0 1 20 16H4A1 1 0 0 1 3 15V5Z"/><path d="M7 20H17"/><path d="M9 16V20"/><path d="M15 16V20"/>' },
+  'documento':     { n:'Documento', g:'trabajo', k:'archivo texto', d:'<path d="M14 3V7A1 1 0 0 0 15 8H19"/><path d="M17 21H7A2 2 0 0 1 5 19V5A2 2 0 0 1 7 3H14L19 8V19A2 2 0 0 1 17 21Z"/><path d="M9 9L10 9"/><path d="M9 13L15 13"/><path d="M9 17L15 17"/>' },
+  'carpeta':       { n:'Carpeta', g:'trabajo', k:'archivos ordenar', d:'<path d="M5 4H9L12 7H19A2 2 0 0 1 21 9V17A2 2 0 0 1 19 19H5A2 2 0 0 1 3 17V6A2 2 0 0 1 5 4"/>' },
+  'tareas':        { n:'Tareas', g:'trabajo', k:'pendientes hecho', d:'<path d="M9 5H7A2 2 0 0 0 5 7V19A2 2 0 0 0 7 21H17A2 2 0 0 0 19 19V7A2 2 0 0 0 17 5H15"/><path d="M9 3M9 5A2 2 0 0 1 11 3H13A2 2 0 0 1 15 5V5A2 2 0 0 1 13 7H11A2 2 0 0 1 9 5Z"/><path d="M9 14L11 16L15 12"/>' },
+  'checklist':     { n:'Checklist', g:'trabajo', k:'lista tareas', d:'<path d="M9.62 20H7A2 2 0 0 1 5 18V6A2 2 0 0 1 7 4H15A2 2 0 0 1 17 6V14"/><path d="M14 19L16 21L20 17"/><path d="M9 8H13"/><path d="M9 12H11"/>' },
+  'barras':        { n:'Gráfico de barras', g:'trabajo', k:'estadisticas datos', d:'<path d="M3 13A1 1 0 0 1 4 12H8A1 1 0 0 1 9 13V19A1 1 0 0 1 8 20H4A1 1 0 0 1 3 19Z"/><path d="M15 9A1 1 0 0 1 16 8H20A1 1 0 0 1 21 9V19A1 1 0 0 1 20 20H16A1 1 0 0 1 15 19Z"/><path d="M9 5A1 1 0 0 1 10 4H14A1 1 0 0 1 15 5V19A1 1 0 0 1 14 20H10A1 1 0 0 1 9 19Z"/><path d="M4 20H18"/>' },
+  'impresora':     { n:'Impresora', g:'trabajo', k:'imprimir', d:'<path d="M17 17H19A2 2 0 0 0 21 15V11A2 2 0 0 0 19 9H5A2 2 0 0 0 3 11V15A2 2 0 0 0 5 17H7"/><path d="M17 9V5A2 2 0 0 0 15 3H9A2 2 0 0 0 7 5V9"/><path d="M7 13M7 15A2 2 0 0 1 9 13H15A2 2 0 0 1 17 15V19A2 2 0 0 1 15 21H9A2 2 0 0 1 7 19Z"/>' },
+  'clip':          { n:'Clip', g:'trabajo', k:'adjuntar papel', d:'<path d="M15 7L8.5 13.5A1.5 1.5 0 0 0 11.5 16.5L18 10A3 3 0 0 0 12 4L5.5 10.5A4.5 4.5 0 0 0 14.5 19.5L21 13"/>' },
+  'evento':        { n:'Evento', g:'trabajo', k:'cita reunion fecha', d:'<path d="M4 5M4 7A2 2 0 0 1 6 5H18A2 2 0 0 1 20 7V19A2 2 0 0 1 18 21H6A2 2 0 0 1 4 19Z"/><path d="M16 3L16 7"/><path d="M8 3L8 7"/><path d="M4 11L20 11"/><path d="M8 15H10V17H8Z"/>' },
+  'alarma':        { n:'Alarma', g:'trabajo', k:'despertador madrugar', d:'<path d="M12 13M5 13A7 7 0 1 0 19 13A7 7 0 1 0 5 13"/><path d="M12 10L12 13L14 13"/><path d="M7 4L4.25 6"/><path d="M17 4L19.75 6"/>' },
+  'arena':         { n:'Reloj de arena', g:'trabajo', k:'tiempo espera', d:'<path d="M6.5 7H17.5"/><path d="M6.5 17H17.5"/><path d="M6 20V18A6 6 0 1 1 18 18V20A1 1 0 0 1 17 21H7A1 1 0 0 1 6 20Z"/><path d="M6 4V6A6 6 0 1 0 18 6V4A1 1 0 0 0 17 3H7A1 1 0 0 0 6 4Z"/>' },
+  'cohete':        { n:'Cohete', g:'trabajo', k:'lanzar proyecto emprender', d:'<path d="M4 13A8 8 0 0 1 11 20A6 6 0 0 0 14 15A9 9 0 0 0 20 7A3 3 0 0 0 17 4A9 9 0 0 0 9 10A6 6 0 0 0 4 13"/><path d="M7 14A6 6 0 0 0 4 20A6 6 0 0 0 10 17"/><path d="M15 9M14 9A1 1 0 1 0 16 9A1 1 0 1 0 14 9"/>' },
+  'diana':         { n:'Diana', g:'trabajo', k:'meta objetivo foco', d:'<path d="M12 12M11 12A1 1 0 1 0 13 12A1 1 0 1 0 11 12"/><path d="M12 7A5 5 0 1 0 17 12"/><path d="M13 3.06A9 9 0 1 0 20.94 11"/><path d="M15 6V9H18L21 6H18V3Z"/><path d="M15 9L12 12"/>' },
+  'enviar':        { n:'Enviar', g:'trabajo', k:'mandar mensaje', d:'<path d="M10 14L21 3"/><path d="M21 3L14.5 21A0.55 0.55 0 0 1 13.5 21L10 14L3 10.5A0.55 0.55 0 0 1 3 9.5L21 3"/>' },
+  'bandeja':       { n:'Bandeja de entrada', g:'trabajo', k:'mail correo', d:'<path d="M4 4M4 6A2 2 0 0 1 6 4H18A2 2 0 0 1 20 6V18A2 2 0 0 1 18 20H6A2 2 0 0 1 4 18Z"/><path d="M4 13H7L10 16H14L17 13H20"/>' },
+  'oficina':       { n:'Oficina', g:'trabajo', k:'edificio empresa', d:'<path d="M3 21L21 21"/><path d="M9 8L10 8"/><path d="M9 12L10 12"/><path d="M9 16L10 16"/><path d="M14 8L15 8"/><path d="M14 12L15 12"/><path d="M14 16L15 16"/><path d="M5 21V5A2 2 0 0 1 7 3H17A2 2 0 0 1 19 5V21"/>' },
+  'herramienta':   { n:'Herramienta', g:'trabajo', k:'arreglar llave', d:'<path d="M7 10H10V7L6.5 3.5A6 6 0 0 1 14.5 11.5L20.5 17.5A2 2 0 0 1 17.5 20.5L11.5 14.5A6 6 0 0 1 3.5 6.5L7 10"/>' },
+  'martillo':      { n:'Martillo', g:'trabajo', k:'construir arreglar', d:'<path d="M11.41 10L4.03 17.42A2.09 2.09 0 0 0 4.03 20.38A2.11 2.11 0 0 0 7.01 20.38L14.41 13"/><path d="M18.12 15.29L20.71 12.71A1 1 0 0 0 20.71 11.29L13.12 3.71A1 1 0 0 0 11.71 3.71L9.12 6.29A1 1 0 0 0 9.12 7.71L16.71 15.29A1 1 0 0 0 18.12 15.29Z"/>' },
+  'web':           { n:'Web', g:'trabajo', k:'pagina internet sitio', d:'<path d="M19.5 7A9 9 0 0 0 12 3A8.99 8.99 0 0 0 4.52 7"/><path d="M11.5 3A16.99 16.99 0 0 0 9.67 7"/><path d="M12.5 3A16.99 16.99 0 0 1 14.33 7"/><path d="M19.5 17A9 9 0 0 1 12 21A8.99 8.99 0 0 1 4.52 17"/><path d="M11.5 21A16.99 16.99 0 0 1 9.67 17"/><path d="M12.5 21A16.99 16.99 0 0 0 14.33 17"/><path d="M2 10L3 14L4.5 10L6 14L7 10"/><path d="M17 10L18 14L19.5 10L21 14L22 10"/><path d="M9.5 10L10.5 14L12 10L13.5 14L14.5 10"/>' },
+  'teclado':       { n:'Teclado', g:'trabajo', k:'escribir tipear', d:'<path d="M2 6M2 8A2 2 0 0 1 4 6H20A2 2 0 0 1 22 8V16A2 2 0 0 1 20 18H4A2 2 0 0 1 2 16Z"/><path d="M6 10L6 10.01"/><path d="M10 10L10 10.01"/><path d="M14 10L14 10.01"/><path d="M18 10L18 10.01"/><path d="M6 14L6 14.01"/><path d="M18 14L18 14.01"/><path d="M10 14L14 14.01"/>' },
+  'mouse':         { n:'Mouse', g:'trabajo', k:'raton compu', d:'<path d="M6 3M6 7A4 4 0 0 1 10 3H14A4 4 0 0 1 18 7V17A4 4 0 0 1 14 21H10A4 4 0 0 1 6 17Z"/><path d="M12 7L12 11"/>' },
+  'credencial':    { n:'Credencial', g:'trabajo', k:'gafete identificacion', d:'<path d="M7 12H10V16H7Z"/><path d="M10 6H4A1 1 0 0 0 3 7V19A1 1 0 0 0 4 20H20A1 1 0 0 0 21 19V7A1 1 0 0 0 20 6H14"/><path d="M10 3M10 4A1 1 0 0 1 11 3H13A1 1 0 0 1 14 4V7A1 1 0 0 1 13 8H11A1 1 0 0 1 10 7Z"/><path d="M14 16H16"/><path d="M14 12H18"/>' },
+  'firma':         { n:'Firma', g:'trabajo', k:'contrato firmar', d:'<path d="M3 17C6.33 13.67 8 11 8 9C8 6 7 6 6 6S3.97 7.08 4 9C4.03 11.05 5.66 13.88 6.5 15C8 17 9 17.5 10 16L12 13C12.33 15.67 13.33 17 15 17C15.53 17 17.64 15 18 15C18.52 15 19.52 15.67 21 17"/>' },
+  'sillon':        { n:'Sillón', g:'hogar', k:'living descansar', d:'<path d="M4 11A2 2 0 0 1 6 13V14H18V13A2 2 0 1 1 22 13V18A1 1 0 0 1 21 19H3A1 1 0 0 1 2 18V13A2 2 0 0 1 4 11Z"/><path d="M4 11V8A3 3 0 0 1 7 5H17A3 3 0 0 1 20 8V11"/><path d="M12 5V14"/>' },
+  'silla':         { n:'Silla', g:'hogar', k:'sentarse mueble', d:'<path d="M5 11A2 2 0 0 1 7 13V15H17V13A2 2 0 1 1 21 13V17A2 2 0 0 1 19 19H5A2 2 0 0 1 3 17V13A2 2 0 0 1 5 11Z"/><path d="M5 11V6A3 3 0 0 1 8 3H16A3 3 0 0 1 19 6V11"/><path d="M6 19V21"/><path d="M18 19V21"/>' },
+  'lampara':       { n:'Lámpara', g:'hogar', k:'luz velador', d:'<path d="M9 20H15"/><path d="M12 20V12"/><path d="M5 12H19L15 4H9Z"/>' },
+  'puerta':        { n:'Puerta', g:'hogar', k:'entrada salir', d:'<path d="M14 12V12.01"/><path d="M3 21H21"/><path d="M6 21V5A2 2 0 0 1 8 3H16A2 2 0 0 1 18 5V21"/>' },
+  'lavarropas':    { n:'Lavarropas', g:'hogar', k:'lavar ropa', d:'<path d="M5 3M5 5A2 2 0 0 1 7 3H17A2 2 0 0 1 19 5V19A2 2 0 0 1 17 21H7A2 2 0 0 1 5 19Z"/><path d="M12 14M8 14A4 4 0 1 0 16 14A4 4 0 1 0 8 14"/><path d="M8 6H8.01"/><path d="M11 6H11.01"/><path d="M14 6H16"/><path d="M8 14C9.33 13.33 10.67 13.33 12 14C13.33 14.67 14.67 14.67 16 14"/>' },
+  'basura':        { n:'Basura', g:'hogar', k:'tacho tirar', d:'<path d="M4 7L20 7"/><path d="M10 11L10 17"/><path d="M14 11L14 17"/><path d="M5 7L6 19A2 2 0 0 0 8 21H16A2 2 0 0 0 18 19L19 7"/><path d="M9 7V4A1 1 0 0 1 10 3H14A1 1 0 0 1 15 4V7"/>' },
+  'reciclar':      { n:'Reciclar', g:'hogar', k:'reciclaje ambiente', d:'<path d="M12 17L10 19L12 21"/><path d="M10 19H19A2 2 0 0 0 20.75 16.25L20.2 15.25"/><path d="M8.54 11L7.8 8.27L5.07 9"/><path d="M7.8 8.27L3.3 16.06A2 2 0 0 0 4.81 18.95L5.95 18.98"/><path d="M15.46 11L18.2 11.73L18.93 9"/><path d="M18.2 11.73L13.7 3.94A2 2 0 0 0 10.44 3.8L9.85 4.77"/>' },
+  'balde':         { n:'Balde', g:'hogar', k:'limpiar agua', d:'<path d="M12 7M4 7A8 4 0 1 0 20 7A8 4 0 1 0 4 7"/><path d="M4 7C4 7.66 4.09 8.32 4.26 8.96L7 19C7.5 20.5 9.24 21 12 21S16.5 20.5 17 19C17.33 18 18.25 14.66 19.74 8.96A7.45 7.45 0 0 0 20 7"/>' },
+  'maceta':        { n:'Maceta', g:'hogar', k:'planta regar', d:'<path d="M2 9A10 10 0 1 0 22 9"/><path d="M12 19A10 10 0 0 1 22 9"/><path d="M2 9A10 10 0 0 1 12 19"/><path d="M12 4A9.7 9.7 0 0 1 14.99 11.5"/><path d="M9.01 11.5A9.7 9.7 0 0 1 12 4"/>' },
+  'heladera':      { n:'Heladera', g:'hogar', k:'cocina comida', d:'<path d="M5 3M5 5A2 2 0 0 1 7 3H17A2 2 0 0 1 19 5V19A2 2 0 0 1 17 21H7A2 2 0 0 1 5 19Z"/><path d="M5 10H19"/><path d="M9 13V16"/><path d="M9 6V7"/>' },
+  'microondas':    { n:'Microondas', g:'hogar', k:'cocina calentar', d:'<path d="M3 6M3 7A1 1 0 0 1 4 6H20A1 1 0 0 1 21 7V17A1 1 0 0 1 20 18H4A1 1 0 0 1 3 17Z"/><path d="M15 6V18"/><path d="M18 12H18.01"/><path d="M18 15H18.01"/><path d="M18 9H18.01"/><path d="M6.5 10.5C7.5 9.83 8 9.83 9 10.5C9.83 10.85 10.67 11.43 11.5 10.5"/><path d="M6.5 13.5C7.5 12.83 8 12.83 9 13.5C9.83 13.85 10.67 14.43 11.5 13.5"/>' },
+  'papel':         { n:'Papel higiénico', g:'hogar', k:'bano', d:'<path d="M6 10M3 10A3 7 0 1 0 9 10A3 7 0 1 0 3 10"/><path d="M21 10C21 6.13 19.66 3 18 3"/><path d="M6 3H18"/><path d="M21 10V20L18 19L15 21L12 18L9 20V10"/><path d="M6 10H6.01"/>' },
+  'canasto':       { n:'Canasto', g:'hogar', k:'ropa compras', d:'<path d="M10 14A2 2 0 1 0 14 14A2 2 0 0 0 10 14"/><path d="M5 8H19A2 2 0 0 1 20.98 10.3L19.72 17.46A3 3 0 0 1 16.76 20H7.24A3 3 0 0 1 4.28 17.46L3.02 10.3A2 2 0 0 1 5 8Z"/><path d="M17 10L15 4"/><path d="M7 10L9 4"/>' },
+  'ventana':       { n:'Ventana', g:'hogar', k:'aire abrir', d:'<path d="M12 3C8.13 3 5 6.27 5 10V20A1 1 0 0 0 6 21H18A1 1 0 0 0 19 20V10C19 6.27 15.87 3 12 3Z"/><path d="M5 13L19 13"/><path d="M12 3L12 21"/>' },
+  'remera':        { n:'Remera', g:'hogar', k:'ropa vestir', d:'<path d="M15 4L21 6V11H18V19A1 1 0 0 1 17 20H7A1 1 0 0 1 6 19V11H3V6L9 4A3 3 0 0 0 15 4"/>' },
+  'percha':        { n:'Percha', g:'hogar', k:'ropa colgar placard', d:'<path d="M14 6A2 2 0 1 0 10 6C10 7.67 10.67 9 12 10H11.99L19.96 14.43A2 2 0 0 1 20.99 16.18V17A2 2 0 0 1 18.99 19H4.99A2 2 0 0 1 2.99 17V16.18A2 2 0 0 1 4.02 14.43L11.99 10"/>' },
+  'coser':         { n:'Coser', g:'hogar', k:'aguja hilo costura', d:'<path d="M3 21C2.33 20.33 6.26 14.76 14.79 4.29A3.5 3.5 0 1 1 19.86 9.08C9.29 17.69 3.67 21.67 3 21Z"/><path d="M17.5 6.5L16.5 7.5"/><path d="M17 7C14.67 4.33 13.5 3 12 3S10 4 10 5C10 9 18.16 13.41 16 16C14.94 17.27 12.64 17.29 10.25 16.81"/><path d="M5.74 15.43C4.35 14.86 2 13.5 2 12"/><path d="M19.5 9.5L21 11"/>' },
+  'rodillo':       { n:'Rodillo de pintura', g:'hogar', k:'pintar pared', d:'<path d="M5 3M5 5A2 2 0 0 1 7 3H17A2 2 0 0 1 19 5V7A2 2 0 0 1 17 9H7A2 2 0 0 1 5 7Z"/><path d="M19 6H20A2 2 0 0 1 22 8A5 5 0 0 1 17 13L12 13V15"/><path d="M10 15M10 16A1 1 0 0 1 11 15H13A1 1 0 0 1 14 16V20A1 1 0 0 1 13 21H11A1 1 0 0 1 10 20Z"/>' },
+  'herramientas':  { n:'Herramientas', g:'hogar', k:'arreglar casa', d:'<path d="M3 21H7L20 8A1.5 1.5 0 0 0 16 4L3 17V21"/><path d="M14.5 5.5L18.5 9.5"/><path d="M12 8L7 3L3 7L8 12"/><path d="M7 8L5.5 9.5"/><path d="M16 12L21 17L17 21L12 16"/><path d="M16 17L14.5 18.5"/>' },
+  'aspiradora':    { n:'Aspiradora', g:'hogar', k:'limpiar barrer', d:'<path d="M21 12A9 9 0 1 1 3 12A9 9 0 0 1 21 12Z"/><path d="M14 9A2 2 0 1 1 10 9A2 2 0 0 1 14 9Z"/><path d="M12 16H12.01"/>' },
+  'tender':        { n:'Tender la cama', g:'hogar', k:'ordenar cuarto', d:'<path d="M5 11M3 11A2 2 0 1 0 7 11A2 2 0 1 0 3 11"/><path d="M10 13H21V11A3 3 0 0 0 18 8H10V13Z"/><path d="M3 16H21"/>' },
+  'pared':         { n:'Pared', g:'hogar', k:'ladrillos construir', d:'<path d="M4 4M4 6A2 2 0 0 1 6 4H18A2 2 0 0 1 20 6V18A2 2 0 0 1 18 20H6A2 2 0 0 1 4 18Z"/><path d="M4 8H20"/><path d="M20 12H4"/><path d="M4 16H20"/><path d="M9 4V8"/><path d="M14 8V12"/><path d="M8 12V16"/><path d="M16 12V16"/><path d="M11 16V20"/>' },
+  'arbol':         { n:'Árbol', g:'naturaleza', k:'plantar verde', d:'<path d="M12 13L10 11"/><path d="M12 12L14 10"/><path d="M12 21V8"/><path d="M9.82 16A3 3 0 0 1 7.08 12.31A3 3 0 0 1 7.38 7.48A3 3 0 0 1 12 3.77A3 3 0 0 1 16.61 7.48A3 3 0 0 1 16.92 12.31A3 3 0 0 1 14 16H10Z"/>' },
+  'bosque':        { n:'Bosque', g:'naturaleza', k:'arboles verde', d:'<path d="M16 5L19 8L17 9L21 13L18 14L22 18H13"/><path d="M15 21L15 18"/><path d="M8 13L6 11"/><path d="M8 12L10 10"/><path d="M8 21V8"/><path d="M5.82 16A3 3 0 0 1 3.08 12.31A3 3 0 0 1 3.38 7.48A3 3 0 0 1 8 3.77A3 3 0 0 1 12.61 7.48A3 3 0 0 1 12.92 12.31A3 3 0 0 1 10 16H6Z"/>' },
+  'flor':          { n:'Flor', g:'naturaleza', k:'jardin regar', d:'<path d="M12 12M9 12A3 3 0 1 0 15 12A3 3 0 1 0 9 12"/><path d="M12 2A3 3 0 0 1 15 5C15 5.56 14.74 6.44 14.22 7.64L13.5 9L15.26 7.11C15.76 6.51 16.18 6.11 16.53 5.9A2.97 2.97 0 0 1 20.6 7A3.01 3.01 0 0 1 19.51 11.1C19.14 11.32 18.52 11.5 17.66 11.63L15 12L17.4 12.33C18.4 12.47 19.1 12.66 19.51 12.9A3.01 3.01 0 0 1 20.6 17A2.97 2.97 0 0 1 16.53 18.1C16.18 17.9 15.76 17.49 15.26 16.89L13.5 15L14.22 16.36C14.74 17.56 15 18.44 15 19A3 3 0 0 1 9 19C9 18.44 9.26 17.56 9.78 16.36L10.5 15L8.74 16.89C8.24 17.49 7.82 17.89 7.47 18.1A2.97 2.97 0 0 1 3.4 17A3.01 3.01 0 0 1 4.49 12.9C4.86 12.68 5.48 12.51 6.34 12.37L9 12L6.6 11.68C5.6 11.53 4.9 11.34 4.49 11.1A3.01 3.01 0 0 1 3.4 7A2.97 2.97 0 0 1 7.47 5.9C7.82 6.1 8.24 6.51 8.74 7.11L10.5 9C9.5 6.71 9 5.38 9 5A3 3 0 0 1 12 2Z"/>' },
+  'brote':         { n:'Brote', g:'naturaleza', k:'semilla crecer', d:'<path d="M12 10A6 6 0 0 0 6 4H3V6A6 6 0 0 0 9 12H12"/><path d="M12 14A6 6 0 0 1 18 8H21V9A6 6 0 0 1 15 15H12"/><path d="M12 20L12 10"/>' },
+  'cactus':        { n:'Cactus', g:'naturaleza', k:'planta desierto', d:'<path d="M6 9V10A3 3 0 0 0 9 13H10"/><path d="M18 8V13A3 3 0 0 1 15 16H14"/><path d="M10 21V5A2 2 0 1 1 14 5V21"/><path d="M7 21H17"/>' },
+  'playa':         { n:'Playa', g:'naturaleza', k:'mar vacaciones', d:'<path d="M17.55 16.75A7.5 7.5 0 0 0 6.95 16.75"/><path d="M18 3.8A6 6 0 0 0 9.8 6L20.2 12A6 6 0 0 0 18 3.8Z"/><path d="M16.73 10C18.39 7.13 18.96 4.36 18 3.8C17.04 3.25 14.93 5.13 13.27 8"/><path d="M15 9L12 14.2"/><path d="M3 19.25A2.4 2.4 0 0 1 4 19A2.4 2.4 0 0 1 6 20A2.4 2.4 0 0 0 8 21A2.4 2.4 0 0 0 10 20A2.4 2.4 0 0 1 12 19A2.4 2.4 0 0 1 14 20A2.4 2.4 0 0 0 16 21A2.4 2.4 0 0 0 18 20A2.4 2.4 0 0 1 20 19A2.4 2.4 0 0 1 21 19.25"/>' },
+  'lluvia':        { n:'Lluvia', g:'naturaleza', k:'clima tormenta', d:'<path d="M7 18A4.6 4.4 0 0 1 7 9A5 4.5 0 0 1 18 11H19A3.5 3.5 0 0 1 19 18"/><path d="M11 13V15M11 18V20M15 15V17M15 20V22"/>' },
+  'nieve':         { n:'Nieve', g:'naturaleza', k:'frio invierno', d:'<path d="M10 4L12 5L14 4"/><path d="M12 2V8.5L15 10.22"/><path d="M17.93 6.27L18.06 8.5L19.93 9.73"/><path d="M20.66 7L15.03 10.25L15.04 13.71"/><path d="M19.93 14.27L18.06 15.5L17.93 17.73"/><path d="M20.66 17L15.03 13.75L12.04 15.49"/><path d="M14 20L12 19L10 20"/><path d="M12 22V15.5L9 13.78"/><path d="M6.07 17.73L5.94 15.5L4.07 14.27"/><path d="M3.34 17L8.97 13.75L8.96 10.29"/><path d="M4.07 9.73L5.94 8.5L6.07 6.27"/><path d="M3.34 7L8.97 10.25L11.96 8.51"/>' },
+  'viento':        { n:'Viento', g:'naturaleza', k:'clima aire', d:'<path d="M5 8H13.5A2.5 2.5 0 1 0 11.16 4.76"/><path d="M3 12H18.5A2.5 2.5 0 1 1 16.16 15.24"/><path d="M4 16H9.5A2.5 2.5 0 1 1 7.16 19.24"/>' },
+  'arcoiris':      { n:'Arcoíris', g:'naturaleza', k:'colores clima', d:'<path d="M22 17C22 11.48 17.52 7 12 7S2 11.48 2 17"/><path d="M18 17A6 6 0 1 0 6 17"/><path d="M14 17A2 2 0 1 0 10 17"/>' },
+  'noche':         { n:'Noche estrellada', g:'naturaleza', k:'estrellas luna', d:'<path d="M12 3C12.13 3 12.26 3 12.39 3A7.5 7.5 0 0 0 20.31 15.45A9 9 0 1 1 12 2.99Z"/><path d="M17 4A2 2 0 0 0 19 6A2 2 0 0 0 17 8A2 2 0 0 0 15 6A2 2 0 0 0 17 4"/><path d="M19 11H21M20 10V12"/>' },
+  'carpa':         { n:'Carpa', g:'naturaleza', k:'camping acampar', d:'<path d="M11 14L15 20H21L12 4L3 20H9L13 14"/>' },
+  'fogata':        { n:'Fogata', g:'naturaleza', k:'fuego camping', d:'<path d="M4 21L20 17"/><path d="M20 21L4 17"/><path d="M12 15A4 4 0 0 0 16 11C16 8 14 8 14 3C10 5 8 8 8 11A4 4 0 0 0 12 15Z"/>' },
+  'brujula':       { n:'Brújula', g:'naturaleza', k:'orientarse trekking', d:'<path d="M8 16L10 10L16 8L14 14L8 16"/><path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M12 3L12 5"/><path d="M12 19L12 21"/><path d="M3 12L5 12"/><path d="M19 12L21 12"/>' },
+  'mariposa':      { n:'Mariposa', g:'naturaleza', k:'insecto', d:'<path d="M12 18.18A3 3 0 1 1 7.05 15.73L7.02 15.75A4.5 4.5 0 0 1 8.5 7C9.92 7 11.18 7.65 12 8.67A4.5 4.5 0 1 1 16.99 15.75A3 3 0 1 1 12 18Z"/><path d="M12 19V9"/><path d="M9 3L12 5L15 3"/>' },
+  'olas':          { n:'Olas', g:'naturaleza', k:'agua mar', d:'<path d="M3 7C6 5 9 5 12 7S18 9 21 7"/><path d="M3 17C6 15 9 15 12 17S18 19 21 17"/><path d="M3 12C6 10 9 10 12 12S18 14 21 12"/>' },
+  'volcan':        { n:'Volcán', g:'naturaleza', k:'montana', d:'<path d="M9 8V7A2 2 0 1 0 5 7"/><path d="M15 8V7A2 2 0 1 1 19 7"/><path d="M4 20L7.47 12.19A2 2 0 0 1 9.3 11H14.7A2 2 0 0 1 16.53 12.19L20 20"/><path d="M6.19 15.06A2.14 2.14 0 0 1 6.67 15C7.19 14.99 7.69 15.18 8 15.5C8.31 15.82 8.81 16.01 9.33 16C9.86 16.01 10.36 15.82 10.67 15.5C10.97 15.18 11.47 14.99 12 15C12.53 14.99 13.03 15.18 13.33 15.5C13.64 15.82 14.14 16.01 14.67 16C15.19 16.01 15.69 15.82 16 15.5C16.31 15.18 16.81 14.99 17.33 15C17.49 15 17.65 15.03 17.8 15.06"/><path d="M12 8V4"/>' },
+  'trebol':        { n:'Trébol', g:'naturaleza', k:'suerte', d:'<path d="M12 10L8.6 6.56A2.1 2.1 0 0 1 8.6 3.61A2.04 2.04 0 0 1 11.52 3.61L12 4L12.48 3.61A2.04 2.04 0 0 1 15.4 3.61A2.1 2.1 0 0 1 15.4 6.56L12 10Z"/><path d="M12 14L8.6 17.44A2.1 2.1 0 0 0 8.6 20.39A2.04 2.04 0 0 0 11.52 20.39L12 20L12.48 20.39A2.04 2.04 0 0 0 15.4 20.39A2.1 2.1 0 0 0 15.4 17.44L12 14Z"/><path d="M14 12L17.44 8.6A2.1 2.1 0 0 1 20.39 8.6A2.04 2.04 0 0 1 20.39 11.52L20 12L20.39 12.48A2.04 2.04 0 0 1 20.39 15.4A2.1 2.1 0 0 1 17.44 15.4L14 12Z"/><path d="M10 12L6.56 8.6A2.1 2.1 0 0 0 3.61 8.6A2.04 2.04 0 0 0 3.61 11.52L4 12L3.61 12.48A2.04 2.04 0 0 0 3.61 15.4A2.1 2.1 0 0 0 6.56 15.4L10 12Z"/>' },
+  'paraguas':      { n:'Paraguas', g:'naturaleza', k:'lluvia', d:'<path d="M4 12A8 8 0 0 1 20 12Z"/><path d="M12 12V18A2 2 0 0 0 16 18"/>' },
+  'humedad':       { n:'Humedad', g:'naturaleza', k:'agua gota', d:'<path d="M7.5 19.42C10.1 21.53 13.9 21.53 16.5 19.42C19.1 17.32 19.76 13.71 18.06 10.88L13.17 3.62C12.75 2.99 11.89 2.81 11.24 3.22A1.38 1.38 0 0 0 10.83 3.62L5.93 10.88C4.24 13.71 4.9 17.32 7.5 19.42Z"/><path d="M5 14H19"/>' },
+  'cerro':         { n:'Cerro', g:'naturaleza', k:'montana trekking subir', d:'<path d="M3 20H21L14.08 5.39A2.3 2.3 0 0 0 9.92 5.39L3 20Z"/><path d="M7.5 11L9.5 13.5L12 11L14 14L16.5 12"/>' },
+  'auto':          { n:'Auto', g:'transporte', k:'manejar coche', d:'<path d="M7 17M5 17A2 2 0 1 0 9 17A2 2 0 1 0 5 17"/><path d="M17 17M15 17A2 2 0 1 0 19 17A2 2 0 1 0 15 17"/><path d="M5 17H3V11L5 6H14L18 11H19A2 2 0 0 1 21 13V17H19M15 17H9M3 11H18M12 11V6"/>' },
+  'colectivo':     { n:'Colectivo', g:'transporte', k:'bondi micro', d:'<path d="M6 17M4 17A2 2 0 1 0 8 17A2 2 0 1 0 4 17"/><path d="M18 17M16 17A2 2 0 1 0 20 17A2 2 0 1 0 16 17"/><path d="M4 17H2V6A1 1 0 0 1 3 5H17A5 7 0 0 1 22 12V17H20M16 17H8"/><path d="M16 5L17.5 12L22 12"/><path d="M2 10L17 10"/><path d="M7 5L7 10"/><path d="M12 5L12 10"/>' },
+  'tren':          { n:'Tren', g:'transporte', k:'subte viaje', d:'<path d="M21 13C21 9.13 17.63 6 11 6H3"/><path d="M3 15H19A2 2 0 0 0 21 13"/><path d="M3 6V11H20.5"/><path d="M3 11V15"/><path d="M8 11V6"/><path d="M13 11V6.5"/><path d="M3 19H21"/>' },
+  'avion':         { n:'Avión', g:'transporte', k:'viajar vuelo', d:'<path d="M16 10H20A2 2 0 0 1 20 14H16L12 21H9L11 14H7L5 16H2L4 12L2 8H5L7 10H11L9 3H12Z"/>' },
+  'moto':          { n:'Moto', g:'transporte', k:'motocicleta', d:'<path d="M5 16M2 16A3 3 0 1 0 8 16A3 3 0 1 0 2 16"/><path d="M19 16M16 16A3 3 0 1 0 22 16A3 3 0 1 0 16 16"/><path d="M7.5 14H12.5L16.5 10H6M7.5 14L11.5 10"/><path d="M13 6H15L16.5 9L18.5 13"/>' },
+  'monopatin':     { n:'Monopatín', g:'transporte', k:'scooter', d:'<path d="M18 17M16 17A2 2 0 1 0 20 17A2 2 0 1 0 16 17"/><path d="M6 17M4 17A2 2 0 1 0 8 17A2 2 0 1 0 4 17"/><path d="M8 17H13A6 6 0 0 1 18 12V7A2 2 0 0 0 16 5H15"/>' },
+  'barco':         { n:'Barco', g:'transporte', k:'navegar', d:'<path d="M2 20A2.4 2.4 0 0 0 4 21A2.4 2.4 0 0 0 6 20A2.4 2.4 0 0 1 8 19A2.4 2.4 0 0 1 10 20A2.4 2.4 0 0 0 12 21A2.4 2.4 0 0 0 14 20A2.4 2.4 0 0 1 16 19A2.4 2.4 0 0 1 18 20A2.4 2.4 0 0 0 20 21A2.4 2.4 0 0 0 22 20"/><path d="M4 18L3 13H21L19 17"/><path d="M5 13V7H13L17 13"/><path d="M7 7V3H6"/>' },
+  'nafta':         { n:'Nafta', g:'transporte', k:'combustible estacion', d:'<path d="M14 11H15A2 2 0 0 1 17 13V16A1.5 1.5 0 0 0 20 16V9L17 6"/><path d="M4 20V6A2 2 0 0 1 6 4H12A2 2 0 0 1 14 6V20"/><path d="M3 20L15 20"/><path d="M18 7V8A1 1 0 0 0 19 9H20"/><path d="M4 11L14 11"/>' },
+  'estacionar':    { n:'Estacionar', g:'transporte', k:'parking', d:'<path d="M3 5A2 2 0 0 1 5 3H19A2 2 0 0 1 21 5V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V5Z"/><path d="M10 16V8H12.67C13.4 8 14 8.89 14 10S13.4 12 12.67 12H10"/>' },
+  'ubicacion':     { n:'Ubicación', g:'transporte', k:'lugar pin', d:'<path d="M9 11A3 3 0 1 0 15 11A3 3 0 0 0 9 11"/><path d="M17.66 16.66L13.41 20.9A2 2 0 0 1 10.59 20.9L6.34 16.66A8 8 0 1 1 17.66 16.66Z"/>' },
+  'ruta':          { n:'Ruta', g:'transporte', k:'camino recorrido', d:'<path d="M3 19A2 2 0 1 0 7 19A2 2 0 0 0 3 19"/><path d="M19 7A2 2 0 1 0 19 3A2 2 0 0 0 19 7Z"/><path d="M11 19H16.5A3.5 3.5 0 0 0 16.5 12H8.5A3.5 3.5 0 0 1 8.5 5H13"/>' },
+  'valija':        { n:'Valija', g:'transporte', k:'viaje equipaje', d:'<path d="M6 6M6 8A2 2 0 0 1 8 6H16A2 2 0 0 1 18 8V18A2 2 0 0 1 16 20H8A2 2 0 0 1 6 18Z"/><path d="M9 6V5A2 2 0 0 1 11 3H13A2 2 0 0 1 15 5V6"/><path d="M6 10H18"/><path d="M6 16H18"/><path d="M9 20V21"/><path d="M15 20V21"/>' },
+  'volante':       { n:'Volante', g:'transporte', k:'manejar', d:'<path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M12 12M10 12A2 2 0 1 0 14 12A2 2 0 1 0 10 12"/><path d="M12 14L12 21"/><path d="M10 12L3.25 10"/><path d="M14 12L20.75 10"/>' },
+  'camion':        { n:'Camión', g:'transporte', k:'mudanza envio', d:'<path d="M7 17M5 17A2 2 0 1 0 9 17A2 2 0 1 0 5 17"/><path d="M17 17M15 17A2 2 0 1 0 19 17A2 2 0 1 0 15 17"/><path d="M5 17H3V6A1 1 0 0 1 4 5H13V17M9 17H15M19 17H21V11H13M13 6H18L21 11"/>' },
+  'camino':        { n:'Camino', g:'transporte', k:'ruta calle', d:'<path d="M4 19L8 5"/><path d="M16 5L20 19"/><path d="M12 8V6"/><path d="M12 13V11"/><path d="M12 18V16"/>' },
+  'helicoptero':   { n:'Helicóptero', g:'transporte', k:'volar', d:'<path d="M3 10L4 12H10"/><path d="M12 9A2 2 0 0 0 10 11V14C10 15.1 10.9 16 12 16H19A2 2 0 0 0 21 14C21 10.69 17.87 9 14 9H12Z"/><path d="M13 9L13 6"/><path d="M5 6L20 6"/><path d="M15 9.1V13H20.5"/><path d="M15 19L15 16"/><path d="M19 19L11 19"/>' },
+  'celular':       { n:'Celular', g:'tecnologia', k:'telefono movil', d:'<path d="M6 5A2 2 0 0 1 8 3H16A2 2 0 0 1 18 5V19A2 2 0 0 1 16 21H8A2 2 0 0 1 6 19V5Z"/><path d="M11 4H13"/><path d="M12 17V17.01"/>' },
+  'sin-celular':   { n:'Sin celular', g:'tecnologia', k:'desconectar pantalla', d:'<path d="M7.16 3.19C7.42 3.07 7.7 3 8 3H16A2 2 0 0 1 18 5V14M18 18V19A2 2 0 0 1 16 21H8A2 2 0 0 1 6 19V6"/><path d="M11 4H13"/><path d="M3 3L21 21"/><path d="M12 17V17.01"/>' },
+  'tablet':        { n:'Tablet', g:'tecnologia', k:'ipad', d:'<path d="M5 4A1 1 0 0 1 6 3H18A1 1 0 0 1 19 4V20A1 1 0 0 1 18 21H6A1 1 0 0 1 5 20V4Z"/><path d="M11 17A1 1 0 1 0 13 17A1 1 0 0 0 11 17"/>' },
+  'tele':          { n:'Televisor', g:'tecnologia', k:'tv series', d:'<path d="M3 7M3 9A2 2 0 0 1 5 7H19A2 2 0 0 1 21 9V18A2 2 0 0 1 19 20H5A2 2 0 0 1 3 18Z"/><path d="M16 3L12 7L8 3"/>' },
+  'joystick':      { n:'Joystick', g:'tecnologia', k:'jugar videojuegos play', d:'<path d="M12 5H15.5A5 5 0 0 1 15.5 15H10L5.99 19.23A2.3 2.3 0 0 1 2.06 17.19L3.7 9.02A5 5 0 0 1 8.6 5H12Z"/><path d="M14 15L18.07 19.28A2.3 2.3 0 0 0 22 17.26L20.39 9.03"/><path d="M8 9V11"/><path d="M7 10H9"/><path d="M14 10H16"/>' },
+  'smartwatch':    { n:'Reloj inteligente', g:'tecnologia', k:'watch', d:'<path d="M6 9A3 3 0 0 1 9 6H15A3 3 0 0 1 18 9V15A3 3 0 0 1 15 18H9A3 3 0 0 1 6 15V9Z"/><path d="M9 18V21H15V18"/><path d="M9 6V3H15V6"/>' },
+  'auriculares':   { n:'Auriculares', g:'tecnologia', k:'musica escuchar podcast', d:'<path d="M4 13M4 15A2 2 0 0 1 6 13H7A2 2 0 0 1 9 15V18A2 2 0 0 1 7 20H6A2 2 0 0 1 4 18Z"/><path d="M15 13M15 15A2 2 0 0 1 17 13H18A2 2 0 0 1 20 15V18A2 2 0 0 1 18 20H17A2 2 0 0 1 15 18Z"/><path d="M4 15V12A8 8 0 0 1 20 12V15"/>' },
+  'wifi':          { n:'WiFi', g:'tecnologia', k:'internet red', d:'<path d="M12 18L12.01 18"/><path d="M9.17 15.17A4 4 0 0 1 14.83 15.17"/><path d="M6.34 12.34A8 8 0 0 1 17.66 12.34"/><path d="M3.52 9.52C8.2 4.83 15.8 4.83 20.52 9.52"/>' },
+  'bateria':       { n:'Batería', g:'tecnologia', k:'cargar energia', d:'<path d="M16 7H17A2 2 0 0 1 19 9V9.5A0.5 0.5 0 0 0 19.5 10A0.5 0.5 0 0 1 20 10.5V13.5A0.5 0.5 0 0 1 19.5 14A0.5 0.5 0 0 0 19 14.5V15A2 2 0 0 1 17 17H15"/><path d="M8 7H6A2 2 0 0 0 4 9V15A2 2 0 0 0 6 17H7"/><path d="M12 8L10 12H13L11 16"/>' },
+  'robot':         { n:'Robot', g:'tecnologia', k:'ia inteligencia artificial', d:'<path d="M6 4M6 6A2 2 0 0 1 8 4H16A2 2 0 0 1 18 6V10A2 2 0 0 1 16 12H8A2 2 0 0 1 6 10Z"/><path d="M12 2V4"/><path d="M9 12V21"/><path d="M15 12V21"/><path d="M5 16L9 14"/><path d="M15 14L19 16"/><path d="M9 18H15"/><path d="M10 8V8.01"/><path d="M14 8V8.01"/>' },
+  'procesador':    { n:'Procesador', g:'tecnologia', k:'chip compu', d:'<path d="M5 5M5 6A1 1 0 0 1 6 5H18A1 1 0 0 1 19 6V18A1 1 0 0 1 18 19H6A1 1 0 0 1 5 18Z"/><path d="M9 9H15V15H9Z"/><path d="M3 10H5"/><path d="M3 14H5"/><path d="M10 3V5"/><path d="M14 3V5"/><path d="M21 10H19"/><path d="M21 14H19"/><path d="M14 21V19"/><path d="M10 21V19"/>' },
+  'subir':         { n:'Subir a la nube', g:'tecnologia', k:'backup', d:'<path d="M7 18A4.6 4.4 0 0 1 7 9A5 4.5 0 0 1 18 11H19A3.5 3.5 0 0 1 19 18H18"/><path d="M9 15L12 12L15 15"/><path d="M12 12L12 21"/>' },
+  'descargar':     { n:'Descargar', g:'tecnologia', k:'bajar', d:'<path d="M4 17V19A2 2 0 0 0 6 21H18A2 2 0 0 0 20 19V17"/><path d="M7 11L12 16L17 11"/><path d="M12 4L12 16"/>' },
+  'campana':       { n:'Campana', g:'tecnologia', k:'notificacion aviso', d:'<path d="M10 5A2 2 0 1 1 14 5A7 7 0 0 1 18 11V14A4 4 0 0 0 20 17H4A4 4 0 0 0 6 14V11A7 7 0 0 1 10 5"/><path d="M9 17V18A3 3 0 0 0 15 18V17"/>' },
+  'guardar':       { n:'Guardar', g:'tecnologia', k:'disquete', d:'<path d="M6 4H16L20 8V18A2 2 0 0 1 18 20H6A2 2 0 0 1 4 18V6A2 2 0 0 1 6 4"/><path d="M12 14M10 14A2 2 0 1 0 14 14A2 2 0 1 0 10 14"/><path d="M14 4L14 8L8 8L8 4"/>' },
+  'reproducir':    { n:'Reproducir', g:'tecnologia', k:'play video', d:'<path d="M7 4V20L20 12Z"/>' },
+  'qr':            { n:'Código QR', g:'tecnologia', k:'escanear', d:'<path d="M4 4M4 5A1 1 0 0 1 5 4H9A1 1 0 0 1 10 5V9A1 1 0 0 1 9 10H5A1 1 0 0 1 4 9Z"/><path d="M7 17L7 17.01"/><path d="M14 4M14 5A1 1 0 0 1 15 4H19A1 1 0 0 1 20 5V9A1 1 0 0 1 19 10H15A1 1 0 0 1 14 9Z"/><path d="M7 7L7 7.01"/><path d="M4 14M4 15A1 1 0 0 1 5 14H9A1 1 0 0 1 10 15V19A1 1 0 0 1 9 20H5A1 1 0 0 1 4 19Z"/><path d="M17 7L17 7.01"/><path d="M14 14L17 14"/><path d="M20 14L20 14.01"/><path d="M14 14L14 17"/><path d="M14 20L17 20"/><path d="M17 17L20 17"/><path d="M20 17L20 20"/>' },
+  'parlante':      { n:'Parlante', g:'tecnologia', k:'musica sonido', d:'<path d="M5 3M5 5A2 2 0 0 1 7 3H17A2 2 0 0 1 19 5V19A2 2 0 0 1 17 21H7A2 2 0 0 1 5 19Z"/><path d="M12 14M9 14A3 3 0 1 0 15 14A3 3 0 1 0 9 14"/><path d="M12 7L12 7.01"/>' },
+  'enchufe':       { n:'Enchufe', g:'tecnologia', k:'electricidad cargar', d:'<path d="M9.79 6L18 14.21L15.95 16.27A5.81 5.81 0 1 1 7.73 8.05L9.79 6Z"/><path d="M4 20L7.5 16.5"/><path d="M15 4L11.5 7.5"/><path d="M20 9L16.5 12.5"/>' },
+  'podcast':       { n:'Podcast', g:'tecnologia', k:'hablar grabar', d:'<path d="M5 8H19L18.38 10.48A2 2 0 0 1 16.44 12H7.56A2 2 0 0 1 5.62 10.48L5 8Z"/><path d="M7 8V6A3 3 0 0 1 10 3"/><path d="M8 12L9 21"/><path d="M16 12L15 21"/><path d="M7 21H17"/>' },
+  'perro':         { n:'Perro', g:'mascotas', k:'mascota pasear', d:'<path d="M11 5H13"/><path d="M19 12C18.33 17.33 16.67 20 14 20H10C7.33 20 5.67 17.33 5 12"/><path d="M11 16C11 16.67 11.33 17 12 17S13 16.67 13 16H11Z"/><path d="M12 18V20"/><path d="M10 11V11.01"/><path d="M14 11V11.01"/><path d="M5 4L11 4.97L4.76 11.66A1.02 1.02 0 0 1 3.35 11.77A0.95 0.95 0 0 1 3.02 10.81L5 4Z"/><path d="M19 4L13 4.97L19.24 11.66C19.6 12.07 20.23 12.12 20.65 11.77A0.95 0.95 0 0 0 20.98 10.81L19 4Z"/>' },
+  'gato':          { n:'Gato', g:'mascotas', k:'mascota', d:'<path d="M20 3V13A8 8 0 1 1 4 13V3L7.43 6.43A7.96 7.96 0 0 1 12 5C13.77 5 15.4 5.57 16.73 6.55L20 3Z"/><path d="M2 16H7L3 20"/><path d="M22 16H17L21 20"/><path d="M12 16M11 16A1 1 0 1 0 13 16A1 1 0 1 0 11 16"/><path d="M9 11V11.01"/><path d="M15 11V11.01"/>' },
+  'huella':        { n:'Huella', g:'mascotas', k:'mascota pata', d:'<path d="M14.7 13.5C13.6 11.5 13.26 11 12 11C10.74 11 10.26 11.76 9.16 13.75C8.22 15.45 6.32 15.59 5.84 17.04C5.75 17.3 5.7 17.71 5.7 18C5.7 19.18 6.49 20 7.5 20C8.76 20 10.5 19 12 19S15.24 20 16.5 20C17.51 20 18.3 19.18 18.3 18C18.3 17.71 18.25 17.3 18.15 17.04C17.68 15.59 15.64 15.2 14.7 13.5Z"/><path d="M20.19 8.08A1.04 1.04 0 0 0 19.78 8H19.77C19.03 8.01 18.21 8.75 17.77 9.87C17.26 11.2 17.49 12.57 18.31 12.92C18.44 12.97 18.58 13 18.72 13C19.46 13 20.29 12.26 20.73 11.13C21.24 9.8 21 8.43 20.19 8.08Z"/><path d="M9.47 9C9.53 9 9.58 9 9.64 8.99C10.58 8.86 11.17 7.64 10.96 6.27C10.75 4.97 9.91 4 9.03 4C8.97 4 8.92 4 8.86 4.01C7.92 4.14 7.33 5.36 7.54 6.73C7.75 8.03 8.59 9 9.47 9Z"/><path d="M16.46 6.73C16.67 5.36 16.08 4.14 15.14 4.01A1.16 1.16 0 0 0 14.97 4C14.09 4 13.25 4.97 13.04 6.27C12.83 7.64 13.42 8.86 14.36 8.99C14.42 9 14.47 9 14.53 9C15.41 9 16.26 8.03 16.46 6.73Z"/><path d="M5.69 12.92C6.51 12.57 6.74 11.2 6.23 9.87C5.79 8.74 4.96 8 4.22 8C4.08 8 3.94 8.03 3.81 8.08C2.99 8.43 2.76 9.8 3.27 11.13C3.71 12.26 4.54 13 5.28 13C5.42 13 5.56 12.97 5.69 12.92Z"/>' },
+  'pez':           { n:'Pez', g:'mascotas', k:'pecera pescado', d:'<path d="M16.69 7.44A6.97 6.97 0 0 0 15 12C15 13.75 15.64 15.35 16.7 16.57"/><path d="M2 9.5C9.71 18.15 16.75 19.77 22 12C16.75 4.24 9.71 5.86 2 14.51"/><path d="M18 11V11.01"/><path d="M11.5 10.5C10.83 11.5 10.83 12.5 11.5 13.5"/>' },
+  'hueso':         { n:'Hueso', g:'mascotas', k:'perro', d:'<path d="M15 3A3 3 0 0 1 18 6A3 3 0 1 1 15.88 11.12L11.12 15.88A3 3 0 1 1 6 18.18L6 18L5.83 18A3 3 0 1 1 8.13 12.88L12.88 8.13A3 3 0 0 1 15 3Z"/>' },
+  'chancho':       { n:'Chancho', g:'mascotas', k:'animal granja', d:'<path d="M15 11V11.01"/><path d="M16 3L16 6.8A6.02 6.02 0 0 1 18.66 10H20A1 1 0 0 1 21 11V13A1 1 0 0 1 20 14H18.66A6.01 6.01 0 0 1 17 16.47V18.5A1.5 1.5 0 0 1 14 18.5V17.92A6.04 6.04 0 0 1 13 18H9A6.04 6.04 0 0 1 8 17.92V18.5A1.5 1.5 0 0 1 5 18.5V16.5L5 16.47A6 6 0 0 1 9 6H11.5L16 3Z"/>' },
+  'caballo':       { n:'Caballo', g:'mascotas', k:'animal montar', d:'<path d="M7 10L6.15 18.51A1.36 1.36 0 0 0 7.5 20H7.65A2 2 0 0 0 9.5 18.74L10.5 16.26A2 2 0 0 1 12.35 15H13.65A2 2 0 0 1 15.5 16.26L16.5 18.74A2 2 0 0 0 18.35 20H18.5A1.37 1.37 0 0 0 19.86 18.51L19 9H11C11 6 8 4 5 4L2 10L4 12L7 10Z"/><path d="M22 14V12A3 3 0 0 0 19 9"/>' },
+  'bicho':         { n:'Bicho', g:'mascotas', k:'insecto', d:'<path d="M9 9V8A3 3 0 0 1 15 8V9"/><path d="M8 9H16A6 6 0 0 1 17 12V15A5 5 0 0 1 7 15V12A6 6 0 0 1 8 9"/><path d="M3 13L7 13"/><path d="M17 13L21 13"/><path d="M12 20L12 14"/><path d="M4 19L7.35 17"/><path d="M20 19L16.65 17"/><path d="M4 7L7.75 9.4"/><path d="M20 7L16.25 9.4"/>' },
+  'arana':         { n:'Araña', g:'mascotas', k:'insecto', d:'<path d="M5 4V6L10 11"/><path d="M2.5 9.5L4 11H10"/><path d="M4 19V17L10 11"/><path d="M19 4V6L14 11"/><path d="M21.5 9.5L20 11H14"/><path d="M20 19V17L14 11"/><path d="M12 15M8 15A4 4 0 1 0 16 15A4 4 0 1 0 8 15"/><path d="M12 9M10 9A2 2 0 1 0 14 9A2 2 0 1 0 10 9"/>' },
+  'ciervo':        { n:'Ciervo', g:'mascotas', k:'animal', d:'<path d="M3 3C3 5 4 6 7 6C9 6 10 7 10 9"/><path d="M21 3C21 5 20 6 17 6C15 6 14 6.33 14 9"/><path d="M12 18C11 18 8 15 8 12C8 10 9.33 9 12 9S16 10 16 12C16 15 13 18 12 18"/><path d="M15.19 14.89L15.28 14.71A4 4 0 1 1 8.72 14.71"/><path d="M17 3C17 4.33 16.67 5.33 16 6"/><path d="M7 3C7 4.33 7.33 5.33 8 6"/><path d="M7 6C4.33 6.67 2.67 7.67 2 9"/><path d="M17 6C19.67 6.67 21.33 7.67 22 9"/><path d="M8.5 10L7 9"/><path d="M15.5 10L17 9"/><path d="M12 15H12.01"/>' },
+  'plato-perro':   { n:'Plato de mascota', g:'mascotas', k:'comida perro gato', d:'<path d="M10 15L15.59 9.41A2 2 0 1 1 19 8A2 2 0 1 1 17.59 11.41L14 15"/><path d="M12 13L8.41 9.41A2 2 0 1 0 5 8A2 2 0 1 0 6.41 11.41L10 15"/><path d="M3 20H21C20.82 18.33 20.95 16.66 19 15H5C3.67 16 3 17.67 3 20Z"/>' },
+  'ajedrez':       { n:'Ajedrez', g:'ocio', k:'juego tablero', d:'<path d="M12 3A3 3 0 0 1 15 6C15 7.11 14.4 8.48 13.5 9L15 16H9L10.5 9C9.6 8.48 9 7.11 9 6A3 3 0 0 1 12 3Z"/><path d="M8 9H16"/><path d="M6.68 16.77A1 1 0 0 0 6 17.72V19A1 1 0 0 0 7 20H17A1 1 0 0 0 18 19V17.72A1 1 0 0 0 17.32 16.77L15 16H9L6.68 16.77Z"/>' },
+  'cartas':        { n:'Cartas', g:'ocio', k:'naipes truco juego', d:'<path d="M3.6 7.2L10.74 4.09A0.96 0.96 0 0 1 12.01 4.62L16.94 16.52A1 1 0 0 1 16.42 17.82L9.29 20.93A0.96 0.96 0 0 1 8.01 20.4L3.09 8.5A1 1 0 0 1 3.6 7.2Z"/><path d="M15 4H16A1 1 0 0 1 17 5V8.5"/><path d="M20 6C20.26 6.11 20.52 6.22 20.77 6.32A1 1 0 0 1 21.3 7.63L19 13"/>' },
+  'entrada':       { n:'Entrada', g:'ocio', k:'ticket recital cine', d:'<path d="M15 5L15 7"/><path d="M15 11L15 13"/><path d="M15 17L15 19"/><path d="M5 5H19A2 2 0 0 1 21 7V10A2 2 0 0 0 21 14V17A2 2 0 0 1 19 19H5A2 2 0 0 1 3 17V14A2 2 0 0 0 3 10V7A2 2 0 0 1 5 5"/>' },
+  'mascara':       { n:'Máscara', g:'ocio', k:'disfraz', d:'<path d="M12 12M9 12A3 3 0 1 0 15 12A3 3 0 1 0 9 12"/><path d="M4 4M4 6A2 2 0 0 1 6 4H18A2 2 0 0 1 20 6V18A2 2 0 0 1 18 20H6A2 2 0 0 1 4 18Z"/>' },
+  'fantasma':      { n:'Fantasma', g:'ocio', k:'halloween', d:'<path d="M5 11A7 7 0 0 1 19 11V18A1.78 1.78 0 0 1 15.9 19.4A1.65 1.65 0 0 0 13.3 19.4A1.65 1.65 0 0 1 10.7 19.4A1.65 1.65 0 0 0 8.1 19.4A1.78 1.78 0 0 1 5 18V11"/><path d="M10 10L10.01 10"/><path d="M14 10L14.01 10"/><path d="M10 14A3.5 3.5 0 0 0 14 14"/>' },
+  'binoculares':   { n:'Binoculares', g:'ocio', k:'mirar observar', d:'<path d="M7 16M4 16A3 3 0 1 0 10 16A3 3 0 1 0 4 16"/><path d="M17 16M14 16A3 3 0 1 0 20 16A3 3 0 1 0 14 16"/><path d="M16.35 9.17L15.62 7.91C15.46 7.66 14.56 7.71 14.5 8L14.32 9.38"/><path d="M19.76 14.81L16.92 9.68C16.73 9.37 16.33 9 15.5 9C14.67 9 14 9.45 14 10V16"/><path d="M7.65 9.17L8.38 7.91C8.54 7.66 9.44 7.71 9.5 8L9.68 9.38"/><path d="M4.24 14.81L7.08 9.68C7.27 9.37 7.67 9 8.5 9C9.33 9 10 9.45 10 10V16"/><rect x="10" y="12" width="4" height="2"/>' },
+  'pesca':         { n:'Pesca', g:'ocio', k:'pescar anzuelo', d:'<path d="M16 9V15A5 5 0 0 1 6 15V11L9 14"/><path d="M16 7M14 7A2 2 0 1 0 18 7A2 2 0 1 0 14 7"/><path d="M16 5V3"/>' },
+  'espadas':       { n:'Espadas', g:'ocio', k:'juego rpg', d:'<path d="M21 3V8L10 17L6 21L3 18L7 14L16 3Z"/><path d="M5 13L11 19"/><path d="M14.32 17.32L18 21L21 18L17.63 14.63"/><path d="M10 5.5L8 3H3V8L6 10.5"/>' },
+  'magia':         { n:'Magia', g:'ocio', k:'varita', d:'<path d="M6 21L21 6L18 3L3 18L6 21"/><path d="M15 6L18 9"/><path d="M9 3A2 2 0 0 0 11 5A2 2 0 0 0 9 7A2 2 0 0 0 7 5A2 2 0 0 0 9 3"/><path d="M19 13A2 2 0 0 0 21 15A2 2 0 0 0 19 17A2 2 0 0 0 17 15A2 2 0 0 0 19 13"/>' },
+  'corona':        { n:'Corona', g:'ocio', k:'rey reina', d:'<path d="M12 6L16 12L21 8L19 18H5L3 8L8 12Z"/>' },
+  'consola':       { n:'Consola', g:'ocio', k:'videojuegos jugar', d:'<path d="M2 6M2 8A2 2 0 0 1 4 6H20A2 2 0 0 1 22 8V16A2 2 0 0 1 20 18H4A2 2 0 0 1 2 16Z"/><path d="M6 12H10M8 10V14"/><path d="M15 11L15 11.01"/><path d="M18 13L18 13.01"/>' },
+  'pileta':        { n:'Pileta', g:'ocio', k:'piscina nadar verano', d:'<path d="M2 20A2.4 2.4 0 0 0 4 21A2.4 2.4 0 0 0 6 20A2.4 2.4 0 0 1 8 19A2.4 2.4 0 0 1 10 20A2.4 2.4 0 0 0 12 21A2.4 2.4 0 0 0 14 20A2.4 2.4 0 0 1 16 19A2.4 2.4 0 0 1 18 20A2.4 2.4 0 0 0 20 21A2.4 2.4 0 0 0 22 20"/><path d="M2 16A2.4 2.4 0 0 0 4 17A2.4 2.4 0 0 0 6 16A2.4 2.4 0 0 1 8 15A2.4 2.4 0 0 1 10 16A2.4 2.4 0 0 0 12 17A2.4 2.4 0 0 0 14 16A2.4 2.4 0 0 1 16 15A2.4 2.4 0 0 1 18 16A2.4 2.4 0 0 0 20 17A2.4 2.4 0 0 0 22 16"/><path d="M15 12V4.5A1.5 1.5 0 0 1 18 4.5"/><path d="M9 12V4.5A1.5 1.5 0 0 0 6 4.5"/><path d="M15 5L9 5"/><path d="M9 10L15 10"/>' },
+  'cumplido':      { n:'Cumplido', g:'otros', k:'hecho listo tilde', d:'<path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M9 12L11 14L15 10"/>' },
+  'brillos':       { n:'Brillos', g:'otros', k:'magia nuevo', d:'<path d="M16 18A2 2 0 0 1 18 20A2 2 0 0 1 20 18A2 2 0 0 1 18 16A2 2 0 0 1 16 18ZM16 6A2 2 0 0 1 18 8A2 2 0 0 1 20 6A2 2 0 0 1 18 4A2 2 0 0 1 16 6ZM9 18A6 6 0 0 1 15 12A6 6 0 0 1 9 6A6 6 0 0 1 3 12A6 6 0 0 1 9 18Z"/>' },
+  'infinito':      { n:'Infinito', g:'otros', k:'siempre constancia', d:'<path d="M9.83 9.17A4 4 0 1 0 9.83 14.83A10 10 0 0 0 12 12A10 10 0 0 1 14.17 9.17A4 4 0 1 1 14.17 14.83A10 10 0 0 1 12 12A10 10 0 0 0 9.83 9.17"/>' },
+  'parar':         { n:'Parar', g:'otros', k:'stop no dejar', d:'<path d="M8 13V5.5A1.5 1.5 0 0 1 11 5.5V12"/><path d="M11 5.5V3.5A1.5 1.5 0 1 1 14 3.5V12"/><path d="M14 5.5A1.5 1.5 0 0 1 17 5.5V12"/><path d="M17 7.5A1.5 1.5 0 0 1 20 7.5V16A6 6 0 0 1 14 22H12H12.21A6 6 0 0 1 7.2 19.3A69.74 69.74 0 0 1 7 19C6.69 18.52 5.59 16.61 3.71 13.27A1.5 1.5 0 0 1 4.25 11.25A1.87 1.87 0 0 1 6.53 11.53L8 13"/>' },
+  'repetir':       { n:'Repetir', g:'otros', k:'rutina otra vez', d:'<path d="M4 12V9A3 3 0 0 1 7 6H20M17 3L20 6L17 9"/><path d="M20 12V15A3 3 0 0 1 17 18H4M7 21L4 18L7 15"/>' },
+  'escudo':        { n:'Escudo', g:'otros', k:'proteger seguridad', d:'<path d="M12 3A12 12 0 0 0 20.5 6A12 12 0 0 1 12 21A12 12 0 0 1 3.5 6A12 12 0 0 0 12 3"/>' },
+  'ancla':         { n:'Ancla', g:'otros', k:'barco estabilidad', d:'<path d="M12 9V21M4 13A8 8 0 0 0 20 13M21 13H19M5 13H3"/><path d="M12 6M9 6A3 3 0 1 0 15 6A3 3 0 1 0 9 6"/>' },
+  'salvavidas':    { n:'Salvavidas', g:'otros', k:'ayuda', d:'<path d="M12 12M8 12A4 4 0 1 0 16 12A4 4 0 1 0 8 12"/><path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M15 15L18.35 18.35"/><path d="M9 15L5.65 18.35"/><path d="M5.65 5.65L9 9"/><path d="M18.35 5.65L15 9"/>' },
+  'paz':           { n:'Paz', g:'otros', k:'calma', d:'<path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M12 3L12 21"/><path d="M12 12L18.3 18.3"/><path d="M12 12L5.7 18.3"/>' },
+  'rezar':         { n:'Rezar', g:'otros', k:'orar fe espiritual', d:'<path d="M12 5M11 5A1 1 0 1 0 13 5A1 1 0 1 0 11 5"/><path d="M7 20H15L11 16V9L15 12L17 10"/>' },
+  'sin-energia':   { n:'Sin energía', g:'otros', k:'cansado apagado', d:'<path d="M3 3L21 21"/><path d="M15.21 15.21L11 21V14H5L8.79 8.79M10.47 6.47L13 3V9M14 10H19L16.9 12.89"/>' },
+  'prohibido':     { n:'Prohibido', g:'otros', k:'no evitar dejar', d:'<path d="M12 12M3 12A9 9 0 1 0 21 12A9 9 0 1 0 3 12"/><path d="M5.7 5.7L18.3 18.3"/>' },
+  'uno':           { n:'Número uno', g:'otros', k:'primero', d:'<path d="M13 20V4L8 9"/>' },
+  'mejorar':       { n:'Mejorar', g:'otros', k:'subir progreso', d:'<path d="M9 12H5.41A1 1 0 0 1 4.71 10.29L11.29 3.71A1 1 0 0 1 12.71 3.71L19.29 10.29A1 1 0 0 1 18.59 12H15V15H9V12Z"/><path d="M9 21H15"/><path d="M9 18H15"/>' },
+  // ---- Tabler (fin)
 };
 /* El orden y los rótulos de los grupos en el selector. */
 const GRUPOS_ICONOS = [['arte','Arte'], ['estudio','Estudio'], ['finanzas','Finanzas'], ['fitness','Fitness'],
   ['nutricion','Nutrición'], ['salud','Salud'], ['social','Social'], ['trabajo','Trabajo'],
-  ['momento','Momento del día'], ['otros','Otros']];
+  ['hogar','Hogar'], ['naturaleza','Naturaleza'], ['transporte','Transporte'], ['tecnologia','Tecnología'],
+  ['mascotas','Mascotas'], ['ocio','Tiempo libre'], ['momento','Momento del día'], ['otros','Otros']];
 const iconoValido = id => typeof id === 'string' && Object.prototype.hasOwnProperty.call(ICONOS, id);
 
 // Umbrales para llegar a cada nivel, del 0 (Hierro) al 7 (Campeón).
@@ -1585,11 +1930,22 @@ function normalizarHabito(x, validos){
   o.color = esColorHex(o.color) ? o.color : HABIT_COLORS[0];
   if(o.desc != null) o.desc = String(o.desc).slice(0, 80);
   const meta = Number(o.meta);
-  if(o.tipo === 'cantidad' && Number.isFinite(meta) && meta > 0){
+  if(o.tipo === 'tiempo' && Number.isFinite(meta) && meta >= 0.5){
+    // Tiempo: minutos enteros, con una meta distinta por día de la semana si varía. Un día
+    // con 0 no toca. Si los siete son iguales no hace falta la lista: alcanza con la meta.
+    o.meta = Math.min(Math.max(Math.round(meta), 1), MAX_MIN_HABITO);
+    o.unidad = 'min';
+    const md = Array.isArray(o.metasDia) && o.metasDia.length === 7
+      ? o.metasDia.map(n => (Number.isInteger(n) && n >= 0 && n <= MAX_MIN_HABITO ? n : null)) : null;
+    if(md && md.every(n => n !== null) && md.some(n => n > 0) && new Set(md).size > 1){
+      o.metasDia = md; o.meta = Math.max(...md);
+    }else delete o.metasDia;
+  }else if(o.tipo === 'cantidad' && Number.isFinite(meta) && meta > 0){
     o.meta = meta;
     o.unidad = String(o.unidad == null ? '' : o.unidad).slice(0, 20);
+    delete o.metasDia;
   }else{
-    o.tipo = 'check'; delete o.meta; delete o.unidad;   // cantidad sin meta válida no tiene sentido
+    o.tipo = 'check'; delete o.meta; delete o.unidad; delete o.metasDia;   // sin meta válida no tiene sentido
   }
   // Etiquetas: solo ids que existen, sin repetir, hasta MAX_CATS_HABITO.
   const cats = [...new Set((Array.isArray(o.cats) ? o.cats : []).filter(c => typeof c === 'string' && validos.has(c)))]
@@ -2306,7 +2662,20 @@ function computePersonal(){
    `hecho` es lo que cuenta para rachas y rangos; `activo`, para el mapa de
    actividad de Inicio. Un día con 3 de 8 vasos es actividad, pero no es un check. */
 function habitoDe(id){ return state.habitos.list.find(x => x.id === id) || null; }
-function esCantidad(hb){ return !!hb && hb.tipo === 'cantidad' && Number(hb.meta) > 0; }
+function esCantidad(hb){ return !!hb && (hb.tipo === 'cantidad' || hb.tipo === 'tiempo') && Number(hb.meta) > 0; }
+/* Un hábito de tiempo es uno de cantidad en minutos, con meta por día y temporizador. */
+function esTiempo(hb){ return esCantidad(hb) && hb.tipo === 'tiempo'; }
+/* La meta de ESE día: la de su día de la semana si varía (0 = ese día no toca). */
+function metaDia(hb, dia){ return esTiempo(hb) && hb.metasDia ? hb.metasDia[diaSemana(dia)] : Number(hb.meta); }
+/* "45" o "30–60" (los días que tocan), para mostrar la meta sin un día puntual. */
+function metaRango(hb){
+  if(!(esTiempo(hb) && hb.metasDia)) return fmtV(Number(hb.meta));
+  const m = hb.metasDia.filter(n => n > 0), a = Math.min(...m), b = Math.max(...m);
+  return a === b ? fmtV(a) : `${fmtV(a)}–${fmtV(b)}`;
+}
+const metaVaria = hb => esTiempo(hb) && !!hb.metasDia && /–/.test(metaRango(hb));
+/* La meta de una semana entera: la suma por día si varía, si no 7 veces la diaria. */
+const metaSemanal = hb => esTiempo(hb) && hb.metasDia ? hb.metasDia.reduce((a, b) => a + b, 0) : Number(hb.meta) * 7;
 function valorDia(id, dia){
   const v = (state.habitos.log[id] || {})[dia];
   if(v === true) return 1;
@@ -2315,7 +2684,9 @@ function valorDia(id, dia){
 }
 function hecho(id, dia){
   const hb = habitoDe(id), v = valorDia(id, dia);
-  return esCantidad(hb) ? v >= Number(hb.meta) : v > 0;
+  if(!esCantidad(hb)) return v > 0;
+  const m = metaDia(hb, dia);
+  return m > 0 ? v >= m : v > 0;          // un día sin meta (no toca) cuenta con cualquier registro
 }
 function activo(id, dia){ return valorDia(id, dia) > 0; }
 /* Un día SALTEADO guarda 'skip' (valorDia lo lee como 0: no es hecho ni actividad). No es
@@ -2364,6 +2735,7 @@ function programadoEn(hb, dia, ini){
 /* Si ese día le tocaba por su frecuencia, haya sido salteado o no. */
 function tocaDia(hb, dia, ini){
   if(dia < ini) return false;
+  if(esTiempo(hb) && hb.metasDia && !(hb.metasDia[diaSemana(dia)] > 0)) return false;   // meta 0 = no toca
   return !hb.dias || hb.dias.includes(diaSemana(dia));
 }
 const programado = (hb, dia) => programadoEn(hb, dia, inicioDe(hb));
@@ -3205,12 +3577,16 @@ function etiquetaDia(hb, dia, ini){
   // Lo que un lector de pantalla tiene que saber de un día que se ve atenuado.
   const nota = salteado(hb.id, dia) ? ', salteado' : dia < ini ? ', antes del inicio' : !programadoEn(hb, dia, ini) ? ', no toca' : '';
   if(esCantidad(hb)){
-    return `${f}: ${fmtV(valorDia(hb.id, dia))} de ${fmtV(Number(hb.meta))}${hb.unidad ? ' ' + hb.unidad : ''}${ok ? ', cumplido' : ''}${nota}`;
+    const m = metaDia(hb, dia);
+    return `${f}: ${fmtV(valorDia(hb.id, dia))}${m > 0 ? ` de ${fmtV(m)}` : ''}${hb.unidad ? ' ' + hb.unidad : ''}${ok ? ', cumplido' : ''}${nota}`;
   }
   return `${f}: ${ok ? 'cumplido' : 'sin marcar'}${nota}`;
 }
 /* Qué fracción de la meta se llegó ese día (0 a 1). */
-const fracDia = (hb, dia) => Math.min(valorDia(hb.id, dia) / Number(hb.meta), 1);
+const fracDia = (hb, dia) => {
+  const m = metaDia(hb, dia), v = valorDia(hb.id, dia);
+  return m > 0 ? Math.min(v / m, 1) : (v > 0 ? 1 : 0);
+};
 /* Clases y atributos comunes de una casilla de día, sea del tamaño que sea. */
 function claseDia(hb, dia, ini){
   ini = ini || inicioDe(hb);
@@ -3300,9 +3676,12 @@ function filaHoyHTML(hb, dia = habDia || iso()){
       aria-pressed="${ok}" aria-label="${ok ? 'Desmarcar' : 'Marcar'} ${esc(hb.name)} ${de}">${ICONO_CHECK}</button>`;
     return `${abre}${habCabHTML(hb, llamaHTML(hb) + saltar + chk, true, marca, sk)}</div></div>`;
   }
-  const v = valorDia(hb.id, dia), meta = Number(hb.meta), paso = fmtV(pasoDe(hb));
+  const v = valorDia(hb.id, dia), meta = metaDia(hb, dia) || Number(hb.meta), paso = fmtV(pasoDe(hb));
+  // El temporizador registra en el día en que se empieza: solo se ofrece hoy.
+  const play = esTiempo(hb) && dia === iso() ? `<button class="chk play" data-act="hab-reloj" data-habit="${id}"
+      aria-label="${habTimer && habTimer.id === hb.id ? 'Ver el temporizador de' : 'Empezar el temporizador de'} ${esc(hb.name)}">${habTimer && habTimer.id === hb.id ? '⏱' : '▶'}</button>` : '';
   return `${abre}
-    ${habCabHTML(hb, llamaHTML(hb), true, marca, sk)}
+    ${habCabHTML(hb, llamaHTML(hb) + play, true, marca, sk)}
     <div class="hab-cant">
       <button class="chk sm" data-act="valor-paso" data-habit="${id}" data-day="${dia}" data-d="-1" aria-label="Restar ${paso}">−</button>
       <div class="hab-valor" aria-live="polite"><b>${fmtV(v)}</b> / ${fmtV(meta)}<small>${esc(hb.unidad || '')}</small></div>
@@ -3417,7 +3796,7 @@ function completarSeleccion(){
     const creado = !state.habitos.log[id];
     const log = state.habitos.log[id] = state.habitos.log[id] || {};
     previo.push({ id, creado, valor: log[dia] });
-    log[dia] = esCantidad(hb) ? Number(hb.meta) : true;
+    log[dia] = esCantidad(hb) ? (metaDia(hb, dia) || Number(hb.meta)) : true;
     hechos++;
   }
   if(!hechos){
@@ -3719,7 +4098,7 @@ function barrasHabitoHTML(hb){
     <div class="tip" id="hab-tip-b">Tocá una barra para ver el día. La línea punteada es la meta.</div>`;
 }
 function tendenciaHabitoHTML(hb){
-  const W = 12, x0 = 12, x1 = 298, yb = 92, yt = 12, meta = Number(hb.meta) * 7;
+  const W = 12, x0 = 12, x1 = 298, yb = 92, yt = 12, meta = metaSemanal(hb);
   const semanas = weekStarts(W).map(s => {
     let tot = 0;
     for(let k = 0; k < 7; k++) tot += valorDia(hb.id, iso(addDays(s, k)));
@@ -3766,7 +4145,7 @@ function detalleHabitoHTML(hb){
     tiles.push(['Total acumulado', fmtV(Math.round(s.total * 10) / 10), u],
                ['Promedio por día', fmtV(Math.round(s.promedio * 10) / 10), u],
                ['Mejor día', s.mejorDia ? fmtV(s.mejorDia.valor) : '—', s.mejorDia ? fechaCorta(s.mejorDia.fecha) : ''],
-               ['Meta diaria', fmtV(Number(hb.meta)), u]);
+               [metaVaria(hb) ? 'Meta según el día' : 'Meta diaria', metaRango(hb), u]);
   }
   let cuerpo = '';
   if(habDetVista === 'semana'){
@@ -3783,7 +4162,7 @@ function detalleHabitoHTML(hb){
       <div class="hab-cab">
         <button class="chk sm" data-act="cerrar-habito" aria-label="Volver a los hábitos">←</button>
         <span class="hab-ico" aria-hidden="true">${iconoHabitoHTML(hb, 26)}</span>
-        <div class="hab-nom"><b>${esc(hb.name)}</b><span class="hab-sub">${esc(hb.desc || (cant ? `Meta: ${fmtV(Number(hb.meta))} ${hb.unidad || ''} por día` : ''))}</span></div>
+        <div class="hab-nom"><b>${esc(hb.name)}</b><span class="hab-sub">${esc(hb.desc || (cant ? `Meta: ${metaRango(hb)} ${hb.unidad || ''} ${metaVaria(hb) ? 'según el día' : 'por día'}` : ''))}</span></div>
       </div>
       ${catsDe(hb).length ? `<div class="hab-tags" aria-label="Categorías">${catsDe(hb).map(c =>
         `<span class="hab-tag">${esc(c.n)}</span>`).join('')}</div>` : ''}
@@ -4588,6 +4967,7 @@ function sessionFormHTML(){
       <span class="xs muted">Descanso</span>
       ${[[60,'60 s'],[90,'90 s'],[120,'2 min'],[180,'3 min']].map(([s, t]) =>
         `<button type="button" class="btn sm" data-act="timer-iniciar" data-seg="${s}">${t}</button>`).join('')}
+      <button type="button" class="btn sm" data-act="timer-otro">Otro…</button>
     </div>
     <div class="fields">
       <div class="field"><label for="s-date">Fecha</label>
@@ -4713,6 +5093,8 @@ function saveSession(){
    ========================================================================== */
 
 document.addEventListener('click', e => {
+  const fila = e.target.closest('.rueda-item');
+  if(fila){ fijarRueda(fila.closest('.rueda'), +fila.dataset.k); return; }
   const tab = e.target.closest('.tab');
   if(tab){ go(tab.dataset.view); return; }
 
@@ -4733,6 +5115,26 @@ document.addEventListener('click', e => {
 // El mapa corporal también tiene que responder al teclado: los <g> son focusables
 // pero no son botones nativos, así que Enter y Espacio hay que manejarlos a mano.
 document.addEventListener('keydown', e => {
+  // El reloj va encima de todo (también del diálogo): Escape lo minimiza a él primero.
+  if(reloj){
+    if(e.key === 'Escape'){ e.preventDefault(); cerrarReloj(); return; }
+    if(e.target.classList?.contains('rueda')){
+      const c = reloj.cols && reloj.cols.find(x => x.id === e.target.dataset.rueda);
+      const salto = { ArrowUp: -1, ArrowDown: 1, PageUp: -5, PageDown: 5 }[e.key];
+      if(c && (salto || e.key === 'Home' || e.key === 'End')){
+        e.preventDefault();
+        const k = c.valores.indexOf(c.v);
+        fijarRueda(e.target, e.key === 'Home' ? 0 : e.key === 'End' ? c.valores.length - 1 : k + salto);
+      }
+      return;
+    }
+    if(e.key === 'Tab'){                // el foco no se escapa del reloj
+      const f = [...$('#reloj').querySelectorAll('button, [tabindex="0"]')];
+      if(f.length && e.shiftKey && document.activeElement === f[0]){ e.preventDefault(); f[f.length - 1].focus(); }
+      else if(f.length && !e.shiftKey && document.activeElement === f[f.length - 1]){ e.preventDefault(); f[0].focus(); }
+    }
+    return;
+  }
   if(e.key === 'Escape' && !$('#backdrop').hidden){ closeModal(); return; }
   if(e.key === 'Escape' && habMulti){ salirSeleccion(); return; }
   if((e.key === 'Enter' || e.key === ' ') && habMulti && e.target.classList?.contains('en-sel')){ e.preventDefault(); e.target.click(); return; }
@@ -4760,6 +5162,17 @@ document.addEventListener('input', e => {
   // El selector libre de color del editor de hábitos: el elegido pasa a ser el
   // actual y ninguna casilla de la paleta queda marcada.
   if(t.id === 'fl-tel'){ const ok = $('#fl-tel-ok'); if(ok) ok.textContent = telHint(t.value); return; }
+  if(t.id === 'hb-ico-buscar'){ filtrarIconos(t.value); return; }
+  // "Distinto según el día": las casillas arrancan con los minutos que ya había.
+  if(t.id === 'hb-min-var'){
+    const base = $('#hb-min'), grilla = $('#hb-min-dias');
+    grilla.hidden = !t.checked; base.disabled = t.checked;
+    const dias = $$('#hb-min-dias input');
+    if(t.checked) dias.forEach(i => { if(!i.value) i.value = base.value; });
+    else if(!base.value) base.value = Math.max(0, ...dias.map(i => Number(i.value) || 0)) || '';
+    refrescarMinDias();
+    return;
+  }
   if(t.id === 'hb-color-libre'){
     colorDraft = t.value;
     $$('.sw-btn').forEach(b => b.setAttribute('aria-pressed', 'false'));
@@ -4852,13 +5265,39 @@ function refrescarPreviewIcono(){
   if(quitar) quitar.hidden = !(iconoDraft || emoji);
   $$('.ico-btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.icono === iconoDraft)));
 }
+/* Más de 300 íconos: un buscador arriba (por nombre y palabras clave, sin acentos) y los
+   grupos plegados, salvo el del ícono elegido. */
+const textoBusquedaIcono = id => claveNombre(`${ICONOS[id].n} ${ICONOS[id].k || ''} ${id.replace(/-/g, ' ')}`);
 function panelIconosHTML(){
-  return GRUPOS_ICONOS.map(([g, rotulo]) => `
-    <div class="icono-grupo"><span class="xs muted">${esc(rotulo)}</span>
-      <div class="icono-grid">${Object.keys(ICONOS).filter(id => ICONOS[id].g === g).map(id =>
-        `<button type="button" class="ico-btn" data-act="pick-icono" data-icono="${id}"
+  const grupoSel = iconoDraft && ICONOS[iconoDraft] ? ICONOS[iconoDraft].g : null;
+  return `<input type="search" id="hb-ico-buscar" class="ico-buscar" placeholder="Buscar: perro, agua, leer…" aria-label="Buscar ícono" autocomplete="off">
+    <p class="xs muted ico-nada" hidden>No hay íconos con ese nombre.</p>` +
+    GRUPOS_ICONOS.map(([g, rotulo]) => {
+      const ids = Object.keys(ICONOS).filter(id => ICONOS[id].g === g);
+      return `<details class="icono-grupo" data-grupo="${g}"${g === grupoSel ? ' open' : ''}>
+      <summary><span>${esc(rotulo)}</span><span class="xs muted">${ids.length}</span></summary>
+      <div class="icono-grid">${ids.map(id =>
+        `<button type="button" class="ico-btn" data-act="pick-icono" data-icono="${id}" data-buscar="${esc(textoBusquedaIcono(id))}"
           aria-pressed="${iconoDraft === id}" aria-label="${esc(ICONOS[id].n)}" title="${esc(ICONOS[id].n)}">${iconoSVG(id, 24)}</button>`).join('')}
-      </div></div>`).join('');
+      </div></details>`;
+    }).join('');
+}
+/* Filtra en el lugar: todas las palabras tienen que aparecer. Con búsqueda se abren los
+   grupos que tienen algo y se esconden los demás; sin búsqueda vuelven a como estaban. */
+function filtrarIconos(q){
+  const palabras = claveNombre(q).split(' ').filter(Boolean);
+  let hay = 0;
+  $$('#hb-iconos .icono-grupo').forEach(gr => {
+    let n = 0;
+    gr.querySelectorAll('.ico-btn').forEach(b => {
+      const ok = palabras.every(p => b.dataset.buscar.includes(p));
+      b.hidden = !ok; if(ok) n++;
+    });
+    if(palabras.length){ gr.hidden = !n; if(n){ gr.open = true; } }
+    else{ gr.hidden = false; gr.open = !!iconoDraft && ICONOS[iconoDraft] && ICONOS[iconoDraft].g === gr.dataset.grupo; }
+    hay += n;
+  });
+  const nada = $('#hb-iconos .ico-nada'); if(nada) nada.hidden = hay > 0;
 }
 
 /* ---- Categorías: chips para elegir y para crear ---- */
@@ -4904,11 +5343,15 @@ function habitoFormHTML(hb){
       </div></div>
     <div class="field"><label id="hb-tipo-lbl">Tipo</label>
       <div class="seg" role="group" aria-labelledby="hb-tipo-lbl">
-        <button type="button" data-act="hab-tipo" data-tipo="check" aria-pressed="${tipo === 'check'}" ${conRegistros ? 'disabled' : ''}>Sí / No</button>
-        <button type="button" data-act="hab-tipo" data-tipo="cantidad" aria-pressed="${tipo === 'cantidad'}" ${conRegistros ? 'disabled' : ''}>Cantidad</button>
+        ${[['check', 'Sí / No'], ['cantidad', 'Cantidad'], ['tiempo', 'Tiempo']].map(([t, r]) =>
+          // Con registros no se cruza entre Sí/No y los de número (se reinterpretarían); entre
+          // Cantidad y Tiempo sí, porque los dos guardan un número por día.
+          `<button type="button" data-act="hab-tipo" data-tipo="${t}" aria-pressed="${tipo === t}" ${conRegistros && (t === 'check') !== (tipo === 'check') ? 'disabled' : ''}>${r}</button>`).join('')}
       </div>
-      ${conRegistros ? '<p class="xs muted mt3">El tipo no se puede cambiar: este hábito ya tiene registros y se reinterpretarían.</p>' : ''}
+      ${conRegistros ? `<p class="xs muted mt3">${tipo === 'check' ? 'El tipo no se puede cambiar: este hábito ya tiene registros y se reinterpretarían.'
+                                                                   : 'Ya tiene registros: puede pasar entre Cantidad y Tiempo, pero no a Sí / No.'}</p>` : ''}
     </div>
+    ${tiempoFormHTML(hb)}
     <div class="fields" id="hb-cant" ${tipo === 'cantidad' ? '' : 'hidden'}>
       <div class="field"><label for="hb-meta">Meta por día</label>
         <input id="hb-meta" type="number" inputmode="decimal" min="0.5" step="any" value="${hb && hb.meta ? hb.meta : ''}" placeholder="20"></div>
@@ -4933,6 +5376,42 @@ function habitoFormHTML(hb){
     ${colorPickerHTML(colorDraft)}`;
 }
 
+/* ---- Hábito de tiempo: minutos por día, iguales o distintos según el día ----
+   Las casillas por día muestran solo los días que tocan según la frecuencia elegida. */
+function tiempoFormHTML(hb){
+  const t = hb && esTiempo(hb), md = t && hb.metasDia, base = t ? hb.meta : '';
+  return `<div class="field" id="hb-tiempo" ${tipoDraft === 'tiempo' ? '' : 'hidden'}>
+      <label for="hb-min">Minutos por día</label>
+      <input id="hb-min" type="number" inputmode="numeric" min="1" max="${MAX_MIN_HABITO}" step="1" value="${md ? '' : base}" placeholder="30" ${md ? 'disabled' : ''}>
+      <label class="imp-incluir"><input type="checkbox" id="hb-min-var" ${md ? 'checked' : ''}> Distinto según el día</label>
+      <div class="min-dias" id="hb-min-dias" ${md ? '' : 'hidden'}>${INICIAL_DIA.map((l, i) => `
+        <label class="min-dia" data-dia="${i}"><span>${l}</span>
+          <input type="number" inputmode="numeric" min="0" max="${MAX_MIN_HABITO}" step="1" id="hb-md-${i}" aria-label="Minutos el ${NOMBRES_DIA[i]}"
+            value="${md ? md[i] : base}"></label>`).join('')}</div>
+      <p class="xs muted" style="margin-top:var(--s1)">En la tarjeta de Hoy, ▶ abre el temporizador y al terminar se registran los minutos solos.</p>
+    </div>`;
+}
+/* Muestra solo las casillas de los días que tocan con la frecuencia que está elegida. */
+function refrescarMinDias(){
+  $$('#hb-min-dias .min-dia').forEach(l => { l.hidden = frecDraft === 'dias' && !diasDraft.includes(+l.dataset.dia); });
+}
+/* Lee el bloque de tiempo del editor: {meta, metasDia?} o un texto de error. */
+function leerTiempoForm(){
+  if($('#hb-min-var').checked){
+    const md = INICIAL_DIA.map((_, i) => {
+      if(frecDraft === 'dias' && !diasDraft.includes(i)) return 0;
+      const v = $('#hb-md-' + i).value.trim();
+      return v === '' ? 0 : Number(v);
+    });
+    if(md.some(n => !Number.isInteger(n) || n < 0 || n > MAX_MIN_HABITO)) return `Los minutos van de 0 a ${MAX_MIN_HABITO}, sin decimales.`;
+    if(!md.some(n => n > 0)) return 'Poné minutos en al menos un día.';
+    return { meta: Math.max(...md), metasDia: md };
+  }
+  const m = Number($('#hb-min').value);
+  if(!Number.isInteger(m) || m < 1 || m > MAX_MIN_HABITO) return `Los minutos por día van de 1 a ${MAX_MIN_HABITO}.`;
+  return { meta: m };
+}
+
 /* ---- Registrar una cantidad ---- */
 let valorDraft = null;
 function setValorDia(id, dia, v){
@@ -4943,7 +5422,7 @@ function setValorDia(id, dia, v){
 function abrirValorDia(id, dia){
   const hb = habitoDe(id);
   if(!hb || !esCantidad(hb)) return;
-  const meta = Number(hb.meta), paso = fmtV(pasoDe(hb));
+  const meta = metaDia(hb, dia) || Number(hb.meta), paso = fmtV(pasoDe(hb));
   valorDraft = { id, dia };
   openModal(`${hb.name} · ${dia === iso() ? 'hoy' : fechaCorta(dia)}`, `
     <div class="field"><label for="hb-valor">Cuánto${hb.unidad ? ' (' + esc(hb.unidad) + ')' : ''} · meta ${fmtV(meta)}</label>
@@ -5253,7 +5732,7 @@ function handleAction(act, btn, ev){
   case 'gym-semana': gymSemana = Math.max(0, gymSemana + Number(btn.dataset.d)); render(); break;
   case 'pomo-opc': {
     const k = btn.dataset.k, v = Number(btn.dataset.v);
-    if((k === 'foco' && POMO_FOCO.includes(v)) || (k === 'descanso' && POMO_DESC.includes(v))){
+    if((k === 'foco' && pomoFocoOk(v)) || (k === 'descanso' && pomoDescOk(v))){
       pomoForm.materia = ($('#pomo-mat') || {}).value || pomoForm.materia;
       pomoForm.tema = ($('#pomo-tema') || {}).value || pomoForm.tema;
       pomoForm[k] = v; render();
@@ -5263,7 +5742,13 @@ function handleAction(act, btn, ev){
   case 'pomo-iniciar': {
     const mat = $('#pomo-mat').value, tema = $('#pomo-tema').value;
     pomoForm.materia = mat; pomoForm.tema = tema;
-    iniciarPomo(mat, tema, pomoForm.foco, pomoForm.descanso);
+    if(iniciarPomo(mat, tema, pomoForm.foco, pomoForm.descanso)) abrirReloj({ modo: 'corriendo', fuente: 'pomo' });
+    break;
+  }
+  case 'pomo-otro': {
+    pomoForm.materia = $('#pomo-mat').value; pomoForm.tema = $('#pomo-tema').value;
+    if(!pomoForm.materia.trim()){ toast('Elegí una materia para el pomodoro.'); break; }
+    elegirPomo();
     break;
   }
   case 'pomo-terminar': terminarPomo(); break;
@@ -5296,7 +5781,41 @@ function handleAction(act, btn, ev){
     break;
   }
   case 'pomo-descartar': descartarPomo(); break;
-  case 'timer-iniciar': iniciarTimer(+btn.dataset.seg); break;
+  case 'timer-iniciar': iniciarTimer(+btn.dataset.seg); abrirReloj({ modo: 'corriendo', fuente: 'descanso' }); break;
+  case 'timer-otro': elegirDescanso(timer ? Math.round(timer.total / 1000) : 90); break;
+  case 'hab-reloj': {
+    const hid = btn.dataset.habit;
+    if(habTimer){                       // uno a la vez: si ya corre, se muestra ese
+      if(habTimer.id !== hid) toast(`Ya hay un temporizador corriendo: ${habTimer.nombre}`);
+      abrirReloj({ modo: 'corriendo', fuente: 'habito' });
+    }else elegirHabito(hid);
+    break;
+  }
+  case 'reloj-abrir': if(fuenteReloj(btn.dataset.fuente)) abrirReloj({ modo: 'corriendo', fuente: btn.dataset.fuente }); break;
+  case 'reloj-cerrar': cerrarReloj(); break;
+  case 'reloj-rapido': {
+    const q = reloj && reloj.rapidos[+btn.dataset.i];
+    if(q) $$('#reloj .rueda').forEach(el => {
+      const c = reloj.cols.find(x => x.id === el.dataset.rueda);
+      if(c && q.vals[c.id] != null) fijarRueda(el, c.valores.indexOf(q.vals[c.id]));
+    });
+    break;
+  }
+  case 'reloj-empezar': empezarReloj(); break;
+  case 'reloj-pausa': pausaReloj(); break;
+  case 'reloj-mover': moverReloj(+btn.dataset.d); break;
+  case 'reloj-terminar': {
+    const f = reloj && reloj.fuente;
+    if(f === 'descanso'){ cerrarReloj(); pararTimer(); }
+    else if(f === 'pomo') terminarPomo();
+    else if(f === 'habito') terminarHabTimer();
+    break;
+  }
+  case 'reloj-descartar': {
+    const f = reloj && reloj.fuente;
+    if(f === 'pomo') descartarPomo(); else if(f === 'habito') descartarHabTimer();
+    break;
+  }
   case 'timer-ajustar': ajustarTimer(+btn.dataset.d); break;
   case 'timer-parar':   pararTimer(); break;
   case 'add-set': {
@@ -5564,6 +6083,11 @@ function handleAction(act, btn, ev){
         if(!(meta > 0)){ toast('La meta tiene que ser mayor a 0.'); return false; }
         datos.meta = meta; datos.unidad = $('#hb-unidad').value.trim();
       }
+      if(tipoDraft === 'tiempo'){
+        const t = leerTiempoForm();
+        if(typeof t === 'string'){ toast(t); return false; }
+        Object.assign(datos, t, { unidad: 'min' });
+      }
       if(hb){
         // Se arma el hábito completo y se vuelca sobre el MISMO objeto, vaciándolo
         // antes: así lo que ya no corresponde (el ícono que se quitó, la descripción
@@ -5571,7 +6095,8 @@ function handleAction(act, btn, ev){
         const m = Object.assign({}, hb, datos);
         if(!iconoDraft) delete m.icono;
         if(!datos.desc) delete m.desc;
-        if(tipoDraft !== 'cantidad'){ delete m.meta; delete m.unidad; }
+        if(tipoDraft === 'check'){ delete m.meta; delete m.unidad; }
+        if(!datos.metasDia) delete m.metasDia;
         if(frecDraft !== 'dias') delete m.dias;
         if(m.inicio === m.createdAt) delete m.inicio;           // el valor por defecto no se guarda
         const limpio = normalizarHabito(m);
@@ -5642,12 +6167,14 @@ function handleAction(act, btn, ev){
     $$('[data-act="hab-frec"]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.frec === frecDraft)));
     const dias = $('#hb-dias');
     if(dias) dias.hidden = frecDraft !== 'dias';
+    refrescarMinDias();
     break;
   }
   case 'toggle-dia': {
     const dn = Number(btn.dataset.d);
     diasDraft = diasDraft.includes(dn) ? diasDraft.filter(x => x !== dn) : diasDraft.concat([dn]);
     btn.setAttribute('aria-pressed', String(diasDraft.includes(dn)));
+    refrescarMinDias();
     break;
   }
   case 'no-tocan': habNoTocan = !habNoTocan; render(); break;
@@ -5704,8 +6231,9 @@ function handleAction(act, btn, ev){
   case 'hab-tipo': {
     tipoDraft = btn.dataset.tipo;
     $$('[data-act="hab-tipo"]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tipo === tipoDraft)));
-    const bloque = $('#hb-cant');
+    const bloque = $('#hb-cant'), bt = $('#hb-tiempo');
     if(bloque) bloque.hidden = tipoDraft !== 'cantidad';
+    if(bt){ bt.hidden = tipoDraft !== 'tiempo'; refrescarMinDias(); }
     break;
   }
   case 'pick-color':
@@ -5868,7 +6396,8 @@ const CLAVE_TIMER = 'bauTracker.timer';
 let timer = null;                       // {fin, total} en ms de reloj; null = no hay
 let timerIntervalo = 0, timerAudio = null, timerWakeLock = null;
 
-function restanteMs(t, ahora = Date.now()){ return t ? Math.max(0, t.fin - ahora) : 0; }
+/* En pausa, lo que queda está guardado y no corre. */
+function restanteMs(t, ahora = Date.now()){ return !t ? 0 : t.pausa != null ? t.pausa : Math.max(0, t.fin - ahora); }
 function fmtTiempo(ms){
   const s = Math.ceil(ms / 1000);          // ceil: a 0,4 s tiene que decir 00:01, no 00:00
   return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
@@ -5880,8 +6409,10 @@ function guardarTimer(){
 function restaurarTimer(){
   let t = null;
   try{ t = JSON.parse(leerClave(CLAVE_TIMER) || 'null'); }catch(e){}
-  if(t && Number.isFinite(t.fin) && Number.isFinite(t.total) && t.total > 0 && t.fin > Date.now()){
+  const pausado = t && Number.isFinite(t.pausa) && t.pausa > 0;
+  if(t && Number.isFinite(t.fin) && Number.isFinite(t.total) && t.total > 0 && (t.fin > Date.now() || pausado)){
     timer = { fin: t.fin, total: t.total };
+    if(pausado){ timer.pausa = t.pausa; timer.pausaDesde = Number(t.pausaDesde) || Date.now(); }
     arrancarTic(); pintarTimer();
   }else{
     // Si venció con la app cerrada no suena nada: ya nadie lo está esperando.
@@ -5895,7 +6426,7 @@ function iniciarTimer(seg){
 }
 function ajustarTimer(deltaSeg){
   if(!timer) return;
-  timer.fin += deltaSeg * 1000;
+  moverFin(timer, deltaSeg);
   if(restanteMs(timer) <= 0){ terminoTimer(); return; }                  // restar hasta el final = terminó
   timer.total = Math.max(timer.total + Math.max(deltaSeg, 0) * 1000, restanteMs(timer)); // la franja no pasa de 100%
   guardarTimer(); pintarTimer();
@@ -5911,6 +6442,7 @@ function ticTimer(){
   if(restanteMs(timer) <= 0) terminoTimer(); else pintarTimer();
 }
 function terminoTimer(){
+  cerrarRelojSi('descanso');
   pararTimer();
   sonarFin();
   toast('Descanso terminado');
@@ -5918,11 +6450,13 @@ function terminoTimer(){
 function pintarTimer(){
   const pill = $('#timer-pill');
   if(!pill) return;
-  pill.hidden = !timer;
-  if(!timer) return;
-  const resta = restanteMs(timer);
-  $('#timer-num').textContent = fmtTiempo(resta);
-  $('#timer-strip').style.setProperty('--p', (resta / timer.total).toFixed(3));
+  pill.hidden = !timer || relojMuestra('descanso');
+  if(timer){
+    const resta = restanteMs(timer);
+    $('#timer-num').textContent = fmtTiempo(resta);
+    $('#timer-strip').style.setProperty('--p', (resta / timer.total).toFixed(3));
+  }
+  pintarReloj();
 }
 
 /* Sonido y vibración. El AudioContext se crea en el toque que INICIA el
@@ -6251,6 +6785,11 @@ addEventListener('offline', () => { if(syncActiva()){ syncEstado = 'sin-conexion
    ========================================================================== */
 const CLAVE_POMO = 'bauTracker.pomo';
 const POMO_FOCO = [25, 50], POMO_DESC = [5, 10], POMO_MIN = 5, POMO_VIEJO_MS = 12 * 3600 * 1000;
+/* Los botones rápidos son POMO_FOCO y POMO_DESC; con la ruedita vale cualquier foco de 5 a 90
+   minutos y cualquier descanso de 0 a 30 (0 = sin descanso). */
+const POMO_FOCO_MAX = 90, POMO_DESC_MAX = 30;
+const pomoFocoOk = v => Number.isInteger(v) && v >= POMO_MIN && v <= POMO_FOCO_MAX;
+const pomoDescOk = v => Number.isInteger(v) && v >= 0 && v <= POMO_DESC_MAX;
 let pomo = null;            // {fase:'foco'|'descanso', fin, total, inicio, materia, tema, foco, descanso}
 let pomoIntervalo = 0, pomoForm = { foco: 25, descanso: 5 };
 
@@ -6274,7 +6813,7 @@ function registrarPomo(p, minutos){
 function iniciarPomo(materia, tema, foco, descanso){
   materia = String(materia || '').trim().slice(0, 40);
   if(!materia){ toast('Elegí una materia para el pomodoro.'); return false; }
-  if(!POMO_FOCO.includes(foco) || !POMO_DESC.includes(descanso)) return false;
+  if(!pomoFocoOk(foco) || !pomoDescOk(descanso)) return false;
   const ahora = Date.now();
   pomo = { fase: 'foco', inicio: ahora, fin: ahora + foco * 60000, total: foco * 60000,
            materia, tema: String(tema || '').trim().slice(0, 80), foco, descanso };
@@ -6283,48 +6822,50 @@ function iniciarPomo(materia, tema, foco, descanso){
 }
 /* Pasa de fase si ya venció. `silencio` = al volver a abrir la app (no suena nada). */
 function avanzarPomo(ahora = Date.now(), silencio = false){
-  if(!pomo || pomo.fin > ahora) return;
+  if(!pomo || pomo.pausa != null || pomo.fin > ahora) return;
   if(pomo.fase === 'foco'){
     const p = pomo;
-    if(ahora - p.fin < POMO_VIEJO_MS) registrarPomo(p, p.foco);
+    // Lo que corrió de verdad hasta el final (con los minutos sumados o restados, sin las pausas).
+    if(ahora - p.fin < POMO_VIEJO_MS) registrarPomo(p, Math.round(corridoMs(p, p.fin) / 60000));
     const finDesc = p.fin + p.descanso * 60000;
-    pomo = finDesc > ahora ? Object.assign({}, p, { fase: 'descanso', fin: finDesc, total: p.descanso * 60000 }) : null;
+    pomo = finDesc > ahora ? { fase: 'descanso', inicio: p.fin, fin: finDesc, total: p.descanso * 60000,
+                               materia: p.materia, tema: p.tema, foco: p.foco, descanso: p.descanso } : null;
     if(!silencio){ sonarFin(); }
   }else{
     pomo = null;
     if(!silencio){ sonarFin(); toast('Terminó el descanso: cuando quieras, otro bloque'); }
   }
   guardarPomo();
-  if(!pomo) pararPomoTic();
+  if(!pomo){ pararPomoTic(); cerrarRelojSi('pomo'); }
   render();
 }
-/* Cortar antes: se guardan los minutos reales si llegan al mínimo. */
+/* Cortar antes: se guardan los minutos que corrieron de verdad (sin las pausas) si llegan al mínimo. */
 function terminarPomo(){
   if(!pomo) return;
   if(pomo.fase === 'foco'){
-    const minutos = Math.floor((Date.now() - pomo.inicio) / 60000);
+    const minutos = Math.floor(corridoMs(pomo) / 60000);
     if(minutos >= POMO_MIN) registrarPomo(pomo, minutos);
     else toast(`Menos de ${POMO_MIN} minutos: no se guardó`);
   }
-  pomo = null; guardarPomo(); pararPomoTic(); render();
+  pomo = null; guardarPomo(); pararPomoTic(); cerrarRelojSi('pomo'); render();
 }
 function descartarPomo(){
   if(!pomo) return;
-  pomo = null; guardarPomo(); pararPomoTic(); render();
+  pomo = null; guardarPomo(); pararPomoTic(); cerrarRelojSi('pomo'); render();
   toast('Pomodoro descartado');
 }
 function arrancarPomo(){ clearInterval(pomoIntervalo); pomoIntervalo = setInterval(ticPomo, 500); pintarPomo(); }
 function pararPomoTic(){ clearInterval(pomoIntervalo); pomoIntervalo = 0; pintarPomo(); }
 function ticPomo(){
   if(!pomo) return pararPomoTic();
-  if(pomo.fin <= Date.now()) avanzarPomo(); else pintarPomo();
+  if(restanteMs(pomo) <= 0) avanzarPomo(); else pintarPomo();
 }
 /* Sin redibujar la pantalla: solo los números y las franjas. */
 function pintarPomo(){
   const pill = $('#pomo-pill');
-  const resta = pomo ? Math.max(0, pomo.fin - Date.now()) : 0, p = pomo ? (resta / pomo.total).toFixed(3) : '1';
+  const resta = restanteMs(pomo), p = pomo ? (resta / pomo.total).toFixed(3) : '1';
   if(pill){
-    pill.hidden = !pomo || view === 'personal';
+    pill.hidden = !pomo || view === 'personal' || relojMuestra('pomo');
     if(pomo){
       $('#pomo-pill-num').textContent = fmtTiempo(resta);
       $('#pomo-pill-txt').textContent = pomo.fase === 'foco' ? 'Estudio' : 'Descanso';
@@ -6333,12 +6874,15 @@ function pintarPomo(){
   }
   const n = $('#pomo-num'); if(n) n.textContent = fmtTiempo(resta);
   const b = $('#pomo-barra'); if(b) b.style.setProperty('--p', p);
+  const e = $('#pomo-pausa'); if(e) e.hidden = !(pomo && pomo.pausa != null);
+  pintarReloj();
 }
 function restaurarPomo(){
   let p = null;
   try{ p = JSON.parse(leerClave(CLAVE_POMO) || 'null'); }catch(e){}
   const ok = p && (p.fase === 'foco' || p.fase === 'descanso') && [p.fin, p.total, p.inicio].every(Number.isFinite) && p.total > 0
-             && typeof p.materia === 'string' && p.materia && POMO_FOCO.includes(p.foco) && POMO_DESC.includes(p.descanso);
+             && typeof p.materia === 'string' && p.materia && pomoFocoOk(p.foco) && pomoDescOk(p.descanso)
+             && (p.pausa == null || (Number.isFinite(p.pausa) && p.pausa >= 0));
   pomo = ok ? p : null;
   if(!pomo){ guardarPomo(); return; }
   avanzarPomo(Date.now(), true);
@@ -6375,8 +6919,10 @@ function examenesHTML(){
 function pomoHTML(){
   if(!pomo){
     const materias = [...new Set(state.estudio.entries.map(e => e.subject))];
-    const seg = (clave, opciones) => `<div class="seg" role="group" aria-label="${clave === 'foco' ? 'Duración del foco' : 'Duración del descanso'}">${opciones.map(m =>
-      `<button type="button" data-act="pomo-opc" data-k="${clave}" data-v="${m}" aria-pressed="${pomoForm[clave] === m}">${clave === 'foco' ? m + ' min' : m + ' de descanso'}</button>`).join('')}</div>`;
+    // Si con la ruedita se eligió otra duración, aparece como un botón más (marcado).
+    const seg = (clave, base) => { const opciones = base.includes(pomoForm[clave]) ? base : base.concat([pomoForm[clave]]);
+      return `<div class="seg" role="group" aria-label="${clave === 'foco' ? 'Duración del foco' : 'Duración del descanso'}">${opciones.map(m =>
+      `<button type="button" data-act="pomo-opc" data-k="${clave}" data-v="${m}" aria-pressed="${pomoForm[clave] === m}">${clave === 'foco' ? m + ' min' : m ? m + ' de descanso' : 'sin descanso'}</button>`).join('')}</div>`; };
     return `<div class="card mt4" id="pomo">
       <h2>Pomodoro</h2>
       <p class="xs muted mt3">Elegí la materia y arrancá. Cuando termina el bloque, la sesión se guarda sola.</p>
@@ -6388,16 +6934,21 @@ function pomoHTML(){
           <input id="pomo-tema" maxlength="80" value="${esc(pomoForm.tema || '')}" placeholder="Límites"></div>
       </div>
       <div class="pomo-opc">${seg('foco', POMO_FOCO)}${seg('descanso', POMO_DESC)}</div>
-      <button class="btn primary mt3" data-act="pomo-iniciar">▶ Empezar ${pomoForm.foco} min</button>
+      <div class="row wrap mt3">
+        <button class="btn primary" data-act="pomo-iniciar">▶ Empezar ${pomoForm.foco} min</button>
+        <button class="btn" data-act="pomo-otro">Otro tiempo…</button>
+      </div>
     </div>`;
   }
-  const resta = Math.max(0, pomo.fin - Date.now()), foco = pomo.fase === 'foco';
+  const resta = restanteMs(pomo), foco = pomo.fase === 'foco';
   return `<div class="card mt4" id="pomo">
     <div class="row between wrap"><h2>Pomodoro</h2><span class="pill">${foco ? 'Foco' : 'Descanso'}</span></div>
     <p class="pomo-fase mt3">${foco ? `${esc(pomo.materia)}${pomo.tema ? ' · ' + esc(pomo.tema) : ''}` : 'Descanso: levantate, tomá agua'}</p>
     <div class="pomo-reloj" id="pomo-num" role="timer" aria-live="off">${fmtTiempo(resta)}</div>
+    <p class="pomo-fase muted" id="pomo-pausa" ${pomo.pausa != null ? '' : 'hidden'}>En pausa</p>
     <div class="bar mt3"><i id="pomo-barra" style="--p:${(resta / pomo.total).toFixed(3)}"></i></div>
     <div class="row wrap mt3">
+      <button class="btn" data-act="reloj-abrir" data-fuente="pomo">Pantalla completa</button>
       ${foco ? `<button class="btn primary" data-act="pomo-terminar">Terminar ahora</button>
                 <button class="btn danger" data-act="pomo-descartar">Descartar</button>`
              : '<button class="btn" data-act="pomo-terminar">Terminar el descanso</button>'}
@@ -6408,6 +6959,342 @@ function pomoHTML(){
 document.addEventListener('visibilitychange', () => {
   if(!document.hidden && pomo) ticPomo();
 });
+
+/* ==========================================================================
+   PAUSA, común a los tres temporizadores (descanso, pomodoro y hábito). En pausa se
+   guarda lo que queda (`pausa`) y desde cuándo; al seguir, el final se corre. Lo que
+   corrió de verdad (sin las pausas) sale de `inicio` y de lo que estuvo en pausa.
+   ========================================================================== */
+function pausar(t, ahora = Date.now()){
+  if(!t || t.pausa != null) return;
+  t.pausa = Math.max(0, t.fin - ahora); t.pausaDesde = ahora;
+}
+function seguir(t, ahora = Date.now()){
+  if(!t || t.pausa == null) return;
+  t.fin = ahora + t.pausa;
+  t.pausadoMs = (t.pausadoMs || 0) + Math.max(0, ahora - (t.pausaDesde || ahora));
+  delete t.pausa; delete t.pausaDesde;
+}
+function corridoMs(t, ahora = Date.now()){
+  if(!t || !Number.isFinite(t.inicio)) return 0;
+  const enPausa = t.pausa != null ? Math.max(0, ahora - (t.pausaDesde || ahora)) : 0;
+  return Math.max(0, ahora - t.inicio - (t.pausadoMs || 0) - enPausa);
+}
+/* Sumar o restar segundos: en pausa se mueve lo que queda; si no, el final. */
+function moverFin(t, dSeg){
+  if(t.pausa != null) t.pausa = Math.max(0, t.pausa + dSeg * 1000);
+  else t.fin += dSeg * 1000;
+}
+
+/* ==========================================================================
+   TEMPORIZADOR DE UN HÁBITO DE TIEMPO. Como el pomodoro: se guarda el instante en que
+   termina, así sobrevive a cerrar la app. Al terminar suma los minutos que corrieron al
+   día en que se empezó (con Deshacer). Uno a la vez.
+   ========================================================================== */
+const CLAVE_HAB_TIMER = 'bauTracker.habTimer';
+let habTimer = null;          // {id, nombre, dia, inicio, fin, total, pausa?, pausaDesde?, pausadoMs?}
+let habTimerIntervalo = 0;
+
+function guardarHabTimer(){
+  if(habTimer) escribirClave(CLAVE_HAB_TIMER, JSON.stringify(habTimer));
+  else try{ localStorage.removeItem(CLAVE_HAB_TIMER); }catch(e){}
+}
+function iniciarHabTimer(id, minutos){
+  const hb = habitoDe(id), min = Number(minutos);
+  if(!esTiempo(hb) || !Number.isInteger(min) || min < 1 || min > MAX_MIN_HABITO) return false;
+  const ahora = Date.now();
+  habTimer = { id, nombre: hb.name, dia: iso(), inicio: ahora, fin: ahora + min * 60000, total: min * 60000 };
+  guardarHabTimer(); prepararAudio(); pedirPantallaEncendida(); arrancarHabTic();
+  return true;
+}
+/* Suma los minutos al día del hábito (un salteo se reemplaza). Devuelve lo sumado. */
+function registrarHabTimer(t, minutos){
+  const hb = habitoDe(t.id);
+  if(!hb || !(minutos >= 1)) return 0;
+  const log = state.habitos.log[t.id] = state.habitos.log[t.id] || {}, previo = log[t.dia];
+  log[t.dia] = Math.round((valorDia(t.id, t.dia) + minutos) * 100) / 100;
+  save();
+  const raiz = state;
+  toast(`${hb.name}: +${minutos} min`, { accion: { texto: 'Deshacer', fn: () => {
+    if(state !== raiz) return;
+    const l = state.habitos.log[t.id] || {};
+    if(previo === undefined) delete l[t.dia]; else l[t.dia] = previo;
+    save(); render();
+  } } });
+  return minutos;
+}
+/* Terminó solo. `silencio` = al volver a abrir la app (no suena). Si terminó hace más de
+   12 horas no se registra: ya no se sabe si de verdad pasó. */
+function avanzarHabTimer(ahora = Date.now(), silencio = false){
+  const t = habTimer;
+  if(!t || t.pausa != null || t.fin > ahora) return;
+  habTimer = null; guardarHabTimer(); pararHabTic(); cerrarRelojSi('habito');
+  if(ahora - t.fin < POMO_VIEJO_MS) registrarHabTimer(t, Math.round(corridoMs(t, t.fin) / 60000));
+  if(!silencio) sonarFin();
+  render();
+}
+/* Cortar antes: se registra lo que corrió, si llega a un minuto. */
+function terminarHabTimer(){
+  const t = habTimer;
+  if(!t) return;
+  habTimer = null; guardarHabTimer(); pararHabTic(); cerrarRelojSi('habito');
+  const min = Math.floor(corridoMs(t) / 60000);
+  if(min >= 1) registrarHabTimer(t, min); else toast('Menos de un minuto: no se registró');
+  render();
+}
+function descartarHabTimer(){
+  if(!habTimer) return;
+  habTimer = null; guardarHabTimer(); pararHabTic(); cerrarRelojSi('habito'); render();
+  toast('Temporizador descartado');
+}
+function arrancarHabTic(){ clearInterval(habTimerIntervalo); habTimerIntervalo = setInterval(ticHabTimer, 500); pintarHabTimer(); }
+function pararHabTic(){ clearInterval(habTimerIntervalo); habTimerIntervalo = 0; pintarHabTimer(); }
+function ticHabTimer(){
+  if(!habTimer) return pararHabTic();
+  if(restanteMs(habTimer) <= 0) avanzarHabTimer(); else pintarHabTimer();
+}
+function pintarHabTimer(){
+  const pill = $('#hab-pill');
+  if(pill){
+    pill.hidden = !habTimer || relojMuestra('habito');
+    if(habTimer){
+      const resta = restanteMs(habTimer);
+      $('#hab-pill-txt').textContent = habTimer.nombre;
+      $('#hab-pill-num').textContent = fmtTiempo(resta);
+      $('#hab-pill-strip').style.setProperty('--p', (resta / habTimer.total).toFixed(3));
+    }
+  }
+  pintarReloj();
+}
+function restaurarHabTimer(){
+  let t = null;
+  try{ t = JSON.parse(leerClave(CLAVE_HAB_TIMER) || 'null'); }catch(e){}
+  const ok = t && typeof t.id === 'string' && fechaValida(t.dia) && [t.inicio, t.fin, t.total].every(Number.isFinite) && t.total > 0
+             && (t.pausa == null || (Number.isFinite(t.pausa) && t.pausa >= 0)) && esTiempo(habitoDe(t.id));
+  habTimer = ok ? t : null;
+  if(!habTimer){ guardarHabTimer(); return; }
+  avanzarHabTimer(Date.now(), true);
+  if(habTimer) arrancarHabTic();
+}
+
+/* ==========================================================================
+   EL RELOJ: la pantalla grande de los tres temporizadores. Va encima de todo, también
+   del diálogo (si no, abrirla taparía el entrenamiento que estás cargando). Dos modos:
+     · elegir: botones rápidos + la ruedita (columnas con scroll-snap: en el iPhone
+       tienen la inercia de siempre) y "Empezar"
+     · corriendo: el anillo que se vacía, el tiempo grande, ±, pausa, terminar y
+       minimizar (vuelve a la píldora; tocar "Ver" en la píldora lo abre de nuevo)
+   No tiene motor propio: muestra y maneja el del descanso, el del pomodoro o el del hábito.
+   ========================================================================== */
+const RUEDA_ALTO = 44;                         // alto de una fila de la ruedita (px)
+const RELOJ_R = 108, RELOJ_C = 2 * Math.PI * RELOJ_R;
+let reloj = null;           // {modo:'elegir', fuente, titulo, sub, cols, rapidos, id?} | {modo:'corriendo', fuente}
+let relojFoco = null;
+
+const relojMuestra = f => !!reloj && reloj.modo === 'corriendo' && reloj.fuente === f;
+const rango = (a, b, paso = 1) => Array.from({ length: Math.floor((b - a) / paso) + 1 }, (_, i) => a + i * paso);
+
+/* Lo que el reloj necesita de cada fuente, o null si esa no está corriendo. */
+function fuenteReloj(f){
+  if(f === 'descanso' && timer) return { t: timer, titulo: 'Descanso', sub: 'Entre series', paso: 15, terminar: 'Terminar' };
+  if(f === 'pomo' && pomo){
+    const foco = pomo.fase === 'foco';
+    return { t: pomo, titulo: foco ? 'Foco' : 'Descanso', paso: 60, descartar: foco,
+             sub: foco ? pomo.materia + (pomo.tema ? ' · ' + pomo.tema : '') : 'Levantate, tomá agua',
+             terminar: foco ? 'Terminar y guardar' : 'Terminar el descanso' };
+  }
+  if(f === 'habito' && habTimer)
+    return { t: habTimer, titulo: habTimer.nombre, sub: 'Al terminar se registran los minutos', paso: 60, descartar: true, terminar: 'Terminar y registrar' };
+  return null;
+}
+
+function abrirReloj(estado){
+  if(!reloj) relojFoco = document.activeElement;
+  reloj = estado;
+  const el = $('#reloj');
+  if(!el) return;
+  el.innerHTML = reloj.modo === 'elegir' ? relojElegirHTML() : relojCorriendoHTML();
+  el.hidden = false;
+  document.body.classList.add('reloj-abierto');
+  if(reloj.modo === 'elegir') montarRuedas();
+  pintarTimer(); pintarPomo(); pintarHabTimer();          // las píldoras se esconden mientras está grande
+  const f = el.querySelector('[data-foco]');
+  if(f) f.focus({ preventScroll: true });
+}
+function cerrarReloj(){
+  if(!reloj) return;
+  reloj = null;
+  const el = $('#reloj');
+  el.hidden = true; el.innerHTML = '';
+  document.body.classList.remove('reloj-abierto');
+  pintarTimer(); pintarPomo(); pintarHabTimer();
+  if(relojFoco && relojFoco.focus && document.contains(relojFoco)) relojFoco.focus({ preventScroll: true });
+  relojFoco = null;
+}
+function cerrarRelojSi(f){ if(reloj && reloj.fuente === f) cerrarReloj(); }
+
+function relojCorriendoHTML(){
+  const f = fuenteReloj(reloj.fuente);
+  if(!f) return '';
+  const et = f.paso >= 60 ? `${f.paso / 60} min` : `${f.paso} s`;
+  return `<div class="reloj-caja">
+    <div class="reloj-cab"><h2 id="reloj-tit">${esc(f.titulo)}</h2><p class="reloj-sub" id="reloj-sub">${esc(f.sub)}</p></div>
+    <div class="reloj-anillo">
+      <svg viewBox="0 0 240 240" aria-hidden="true">
+        <circle class="reloj-pista" cx="120" cy="120" r="${RELOJ_R}"/>
+        <circle class="reloj-arco" id="reloj-arco" cx="120" cy="120" r="${RELOJ_R}" stroke-dasharray="${RELOJ_C.toFixed(2)}"/>
+      </svg>
+      <div class="reloj-centro">
+        <div class="reloj-num" id="reloj-num" role="timer" aria-live="off">${fmtTiempo(restanteMs(f.t))}</div>
+        <div class="reloj-estado" id="reloj-estado"></div>
+      </div>
+    </div>
+    <div class="reloj-fila">
+      <button type="button" class="btn" data-act="reloj-mover" data-d="-${f.paso}" aria-label="Restar ${et}">−${et}</button>
+      <button type="button" class="btn primary" data-act="reloj-pausa" id="reloj-pausa" aria-pressed="false" data-foco>Pausa</button>
+      <button type="button" class="btn" data-act="reloj-mover" data-d="${f.paso}" aria-label="Sumar ${et}">+${et}</button>
+    </div>
+    <div class="reloj-fila">
+      <button type="button" class="btn" data-act="reloj-terminar">${esc(f.terminar)}</button>
+      ${f.descartar ? '<button type="button" class="btn danger" data-act="reloj-descartar">Descartar</button>' : ''}
+      <button type="button" class="btn" data-act="reloj-cerrar">Minimizar</button>
+    </div>
+  </div>`;
+}
+/* Sin redibujar: el número, el arco, el estado y el botón de pausa. */
+function pintarReloj(){
+  if(!reloj || reloj.modo !== 'corriendo') return;
+  const f = fuenteReloj(reloj.fuente);
+  if(!f){ cerrarReloj(); return; }
+  const n = $('#reloj-num');
+  if(!n) return;
+  const resta = restanteMs(f.t), frac = f.t.total > 0 ? Math.min(resta / f.t.total, 1) : 0, enPausa = f.t.pausa != null;
+  n.textContent = fmtTiempo(resta);
+  $('#reloj-arco').style.strokeDashoffset = (RELOJ_C * (1 - frac)).toFixed(2);
+  $('#reloj-estado').textContent = enPausa ? 'En pausa' : '';
+  const b = $('#reloj-pausa');
+  b.textContent = enPausa ? 'Seguir' : 'Pausa'; b.setAttribute('aria-pressed', String(enPausa));
+  $('#reloj-tit').textContent = f.titulo; $('#reloj-sub').textContent = f.sub;
+}
+
+/* ---- Elegir: la ruedita ---- */
+function relojElegirHTML(){
+  const r = reloj;
+  return `<div class="reloj-caja">
+    <div class="reloj-cab"><h2 id="reloj-tit">${esc(r.titulo)}</h2>${r.sub ? `<p class="reloj-sub">${esc(r.sub)}</p>` : ''}</div>
+    <div class="reloj-rapidos">${r.rapidos.map((q, i) => `<button type="button" class="btn sm" data-act="reloj-rapido" data-i="${i}">${esc(q.r)}</button>`).join('')}</div>
+    <div class="ruedas">${r.cols.map(ruedaHTML).join('')}</div>
+    <div class="reloj-fila">
+      <button type="button" class="btn" data-act="reloj-cerrar">Cancelar</button>
+      <button type="button" class="btn primary" data-act="reloj-empezar" data-foco>Empezar</button>
+    </div>
+  </div>`;
+}
+function ruedaHTML(c){
+  const k = Math.max(0, c.valores.indexOf(c.v));
+  return `<div class="rueda-col">
+    <div class="rueda" tabindex="0" role="spinbutton" data-rueda="${c.id}" aria-label="${esc(c.rotulo)}"
+      aria-valuemin="${c.valores[0]}" aria-valuemax="${c.valores[c.valores.length - 1]}" aria-valuenow="${c.valores[k]}" aria-valuetext="${c.valores[k]} ${esc(c.rotulo)}">
+      <div class="rueda-pad"></div>${c.valores.map((v, i) =>
+        `<div class="rueda-item${i === k ? ' sel' : ''}" data-k="${i}">${c.id === 'seg' ? String(v).padStart(2, '0') : v}</div>`).join('')}<div class="rueda-pad"></div>
+    </div>
+    <span class="rueda-rot" aria-hidden="true">${esc(c.rotulo)}</span>
+  </div>`;
+}
+/* Qué fila queda en el centro según cuánto se scrolleó (2 filas de relleno arriba). Pura. */
+function valorRueda(scrollTop, valores, alto = RUEDA_ALTO){
+  const k = Math.min(Math.max(Math.round(scrollTop / alto), 0), valores.length - 1);
+  return { k, v: valores[k] };
+}
+function montarRuedas(){
+  $$('#reloj .rueda').forEach(el => {
+    const c = reloj.cols.find(x => x.id === el.dataset.rueda);
+    el.scrollTop = Math.max(0, c.valores.indexOf(c.v)) * RUEDA_ALTO;
+    let espera = 0;
+    const leer = () => { if(reloj && reloj.modo === 'elegir') fijarRueda(el, valorRueda(el.scrollTop, c.valores).k, false); };
+    // scrollend no existe en Safari viejo: el respaldo lee cuando el scroll se queda quieto.
+    el.addEventListener('scroll', () => { clearTimeout(espera); espera = setTimeout(leer, 120); }, { passive: true });
+    el.addEventListener('scrollend', leer);
+  });
+}
+/* Deja la columna en la fila k: el valor elegido, la marca y lo que anuncia el lector. */
+function fijarRueda(el, k, mover = true){
+  const c = el && reloj && reloj.cols && reloj.cols.find(x => x.id === el.dataset.rueda);
+  if(!c) return;
+  k = Math.min(Math.max(k, 0), c.valores.length - 1);
+  c.v = c.valores[k];
+  el.setAttribute('aria-valuenow', String(c.v));
+  el.setAttribute('aria-valuetext', `${c.v} ${c.rotulo}`);
+  el.querySelectorAll('.rueda-item').forEach(it => it.classList.toggle('sel', +it.dataset.k === k));
+  if(mover) el.scrollTo({ top: k * RUEDA_ALTO, behavior: movReducido() ? 'auto' : 'smooth' });
+}
+const valorCol = id => { const c = reloj && reloj.cols.find(x => x.id === id); return c ? c.v : null; };
+
+function elegirDescanso(seg = 90){
+  seg = Math.min(Math.max(Math.round(seg / 5) * 5, 5), 30 * 60 + 55);
+  abrirReloj({ modo: 'elegir', fuente: 'descanso', titulo: 'Descanso', sub: 'Elegí cuánto descansás',
+    cols: [{ id: 'min', rotulo: 'min', valores: rango(0, 30), v: Math.floor(seg / 60) },
+           { id: 'seg', rotulo: 'seg', valores: rango(0, 55, 5), v: seg % 60 }],
+    rapidos: [[60, '1 min'], [90, '1:30'], [120, '2 min'], [180, '3 min'], [300, '5 min']]
+      .map(([s, r]) => ({ r, vals: { min: Math.floor(s / 60), seg: s % 60 } })) });
+}
+function elegirPomo(){
+  const foco = Math.min(Math.max(Math.round(pomoForm.foco / 5) * 5, POMO_MIN), POMO_FOCO_MAX);
+  abrirReloj({ modo: 'elegir', fuente: 'pomo', titulo: 'Pomodoro', sub: pomoForm.materia + (pomoForm.tema ? ' · ' + pomoForm.tema : ''),
+    cols: [{ id: 'foco', rotulo: 'min de foco', valores: rango(POMO_MIN, POMO_FOCO_MAX, 5), v: foco },
+           { id: 'descanso', rotulo: 'min de descanso', valores: rango(0, POMO_DESC_MAX), v: pomoForm.descanso }],
+    rapidos: [[25, 5], [50, 10], [45, 15], [90, 20]].map(([f, d]) => ({ r: `${f} + ${d}`, vals: { foco: f, descanso: d } })) });
+}
+function elegirHabito(id){
+  const hb = habitoDe(id);
+  if(!esTiempo(hb)) return;
+  const hoy = iso(), meta = metaDia(hb, hoy) || Number(hb.meta), hecho_ = valorDia(id, hoy);
+  const falta = Math.round(meta - hecho_), arranque = Math.min(falta > 0 ? falta : meta, 180);
+  const rapidos = (falta > 0 ? [{ r: `Lo que falta · ${falta} min`, vals: { min: Math.min(falta, 180) } }] : [])
+    .concat([15, 30, 45, 60].filter(m => m !== falta).map(m => ({ r: `${m} min`, vals: { min: m } })));
+  abrirReloj({ modo: 'elegir', fuente: 'habito', id, titulo: hb.name, rapidos,
+    sub: `Hoy: ${fmtV(hecho_)} de ${fmtV(meta)} min`,
+    cols: [{ id: 'min', rotulo: 'min', valores: rango(1, 180), v: arranque }] });
+}
+/* "Empezar": arranca el motor que corresponde y pasa a la pantalla con el anillo. */
+function empezarReloj(){
+  if(!reloj || reloj.modo !== 'elegir') return;
+  const f = reloj.fuente;
+  if(f === 'descanso'){
+    const s = valorCol('min') * 60 + valorCol('seg');
+    if(s < 5){ toast('Elegí al menos 5 segundos.'); return; }
+    iniciarTimer(s);
+  }else if(f === 'pomo'){
+    pomoForm.foco = valorCol('foco'); pomoForm.descanso = valorCol('descanso');
+    if(!iniciarPomo(pomoForm.materia, pomoForm.tema, pomoForm.foco, pomoForm.descanso)) return;
+  }else if(f === 'habito'){
+    if(!iniciarHabTimer(reloj.id, valorCol('min'))) return;
+    render();
+  }
+  abrirReloj({ modo: 'corriendo', fuente: f });
+}
+function guardarFuente(f){ if(f === 'descanso') guardarTimer(); else if(f === 'pomo') guardarPomo(); else guardarHabTimer(); }
+function pausaReloj(){
+  const f = reloj && fuenteReloj(reloj.fuente);
+  if(!f) return;
+  if(f.t.pausa != null) seguir(f.t); else pausar(f.t);
+  guardarFuente(reloj.fuente);
+  if(reloj.fuente === 'pomo') render(); else pintarReloj();
+}
+/* ±: el descanso tiene su propia regla (ajustarTimer); en los otros el anillo se
+   recalcula sobre el total nuevo, y restar hasta el final es terminar. */
+function moverReloj(d){
+  const fuente = reloj && reloj.fuente, f = fuenteReloj(fuente);
+  if(!f) return;
+  if(fuente === 'descanso'){ ajustarTimer(d); return; }
+  moverFin(f.t, d);
+  f.t.total = Math.max(f.t.total + d * 1000, restanteMs(f.t), 1000);
+  if(restanteMs(f.t) <= 0 && f.t.pausa == null){ if(fuente === 'pomo') avanzarPomo(); else avanzarHabTimer(); return; }
+  guardarFuente(fuente);
+  if(fuente === 'pomo') pintarPomo(); else pintarHabTimer();
+}
+document.addEventListener('visibilitychange', () => { if(!document.hidden && habTimer) ticHabTimer(); });
+
 
 document.addEventListener('visibilitychange', () => {
   if(document.hidden || !timer) return;
@@ -6713,6 +7600,7 @@ activarInstalacion();
 pedirProteccion();
 restaurarTimer();
 restaurarPomo();
+restaurarHabTimer();
 iniciarNube();
 
 if(location.search.indexOf('test=1') !== -1){
