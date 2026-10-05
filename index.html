@@ -37,6 +37,15 @@
 :root{
   /* --- CLARO: papel. Es el tema base; el oscuro solo redefine tokens. --- */
   --bg:#F4F2ED;
+  /* Vidrio ("liquid glass") SOLO para lo que flota sobre el contenido: las barras, las
+     píldoras de los temporizadores, el aviso y el reloj. Las tarjetas siguen planas:
+     ahí se leen datos y el fondo traslúcido los ensuciaría. */
+  --vidrio:color-mix(in srgb, var(--surface) 66%, transparent);
+  --vidrio-borde:color-mix(in srgb, #FFFFFF 70%, transparent);
+  --vidrio-brillo:inset 0 1px 0 color-mix(in srgb, #FFFFFF 85%, transparent);
+  --velo-vidrio:color-mix(in srgb, var(--bg) 45%, transparent);
+  --desenfoque:blur(22px) saturate(1.6);
+  --desenfoque-fuerte:blur(30px) saturate(1.4);
   --surface:#FFFFFF;
   --surface-2:#EAE7E0;
   --line:#CBC6BA;
@@ -86,6 +95,8 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#15161A; --surface:#1D1F24; --surface-2:#26282E;
+    --vidrio:color-mix(in srgb, var(--surface) 62%, transparent); --vidrio-borde:color-mix(in srgb, #FFFFFF 13%, transparent);
+    --vidrio-brillo:inset 0 1px 0 color-mix(in srgb, #FFFFFF 12%, transparent); --velo-vidrio:color-mix(in srgb, var(--bg) 55%, transparent);
     --line:#3A3D45; --line-fuerte:#F0EEE9;
     --text:#F0EEE9; --muted:#A9A69C; --dim:#938F86;
     --accent:#5BB3D9; --accent-text:#10171B;
@@ -99,6 +110,8 @@
 /* Y el mismo oscuro cuando el interruptor lo pide a mano. */
 :root[data-theme="dark"]{
   --bg:#15161A; --surface:#1D1F24; --surface-2:#26282E;
+  --vidrio:color-mix(in srgb, var(--surface) 62%, transparent); --vidrio-borde:color-mix(in srgb, #FFFFFF 13%, transparent);
+  --vidrio-brillo:inset 0 1px 0 color-mix(in srgb, #FFFFFF 12%, transparent); --velo-vidrio:color-mix(in srgb, var(--bg) 55%, transparent);
   --line:#3A3D45; --line-fuerte:#F0EEE9;
   --text:#F0EEE9; --muted:#A9A69C; --dim:#938F86;
   --accent:#5BB3D9; --accent-text:#10171B;
@@ -875,42 +888,85 @@ a.btn{text-decoration:none; display:inline-flex; align-items:center; justify-con
    Encima de todo (también del diálogo, 60, y de las píldoras, 70); debajo del aviso (80). */
 .reloj{position:fixed; inset:0; z-index:75; display:grid; place-items:center; overflow-y:auto;
   padding:calc(env(safe-area-inset-top, 0px) + var(--s4)) var(--s4) calc(env(safe-area-inset-bottom, 0px) + var(--s4));
-  background:var(--bg)}
+  background:var(--velo-vidrio); -webkit-backdrop-filter:var(--desenfoque-fuerte); backdrop-filter:var(--desenfoque-fuerte)}
 .reloj[hidden]{display:none}
 body.reloj-abierto{overflow:hidden}
-.reloj-caja{width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:var(--s4); text-align:center}
-@media (min-width:700px){
-  .reloj{background:color-mix(in srgb, var(--velo-color) 58%, transparent)}
-  .reloj-caja{background:var(--surface); border:1px solid var(--line); border-radius:var(--r3); padding:var(--s6) var(--s5)}
-}
+.reloj-caja{width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:var(--s4); text-align:center;
+  padding:var(--s5) var(--s4); border-radius:32px; background:var(--vidrio); border:1px solid var(--vidrio-borde);
+  box-shadow:var(--vidrio-brillo); -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque)}
 .reloj-cab h2{font-size:var(--t-lg); margin:0}
 .reloj-sub{margin:var(--s1) 0 0; color:var(--muted); font-size:var(--t-sm)}
-.reloj-anillo{position:relative; width:min(74vw, 300px); aspect-ratio:1}
+/* El anillo toma lo que dejan los dos botones redondos (y nunca pasa de 260 px). */
+.reloj-medio{display:flex; align-items:center; justify-content:center; gap:var(--s1); width:100%; min-width:0}
+.reloj-anillo{position:relative; flex:1 1 0; min-width:0; max-width:260px; aspect-ratio:1}
 .reloj-anillo svg{width:100%; height:100%; transform:rotate(-90deg)}
-.reloj-pista{fill:none; stroke:var(--surface-2); stroke-width:12}
-.reloj-arco{fill:none; stroke:var(--accent); stroke-width:12; stroke-linecap:round; transition:stroke-dashoffset .5s linear}
+.reloj-pista{fill:none; stroke:color-mix(in srgb, var(--tinta) 22%, transparent); stroke-width:14}
+.reloj-arco{fill:none; stroke:var(--tinta); stroke-width:14; stroke-linecap:round; transition:stroke-dashoffset .5s linear}
+.reloj-marcas line{stroke:var(--dim); stroke-width:1.2; opacity:.55}
+.reloj-marcas line.larga{stroke-width:2; opacity:.9}
+/* Los botones del reloj: redondos a los costados, íconos sueltos y píldoras con el color. */
+.reloj-redondo, .reloj-ico{flex:none; display:grid; place-items:center; padding:0; cursor:pointer; border-radius:99px;
+  color:color-mix(in srgb, var(--tinta) 65%, var(--text)); font:inherit}
+.reloj-redondo{width:52px; height:52px; border:0; background:color-mix(in srgb, var(--tinta) 20%, transparent)}
+.reloj-ico{width:48px; height:48px; border:1px solid transparent; background:none}
+.reloj-ico.peligro{color:var(--bad)}
+.reloj-redondo:active, .reloj-ico:active, .reloj-pill:active, .reloj-chip:active{transform:scale(.96)}
+.reloj-pill{flex:1; min-width:0; min-height:52px; padding:0 var(--s4); border:0; border-radius:99px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--s2);
+  background:var(--tinta); color:var(--sobre); font:inherit; font-weight:700; font-size:var(--t-sm)}
+.reloj-pill.grande{width:100%; flex:none; min-height:56px; font-size:var(--t-md)}
+.reloj-pill svg path{fill:currentColor}
+#reloj-pausa-ico, .reloj-pill > svg{display:inline-grid}
+.reloj-acciones{display:flex; align-items:center; gap:var(--s1); width:100%}
+.reloj-acciones .reloj-pill.grande{flex:1; width:auto}
+.reloj-chip{min-height:40px; padding:0 var(--s4); border-radius:99px; cursor:pointer; font:inherit; font-weight:700; font-size:var(--t-sm);
+  border:1px solid color-mix(in srgb, var(--tinta) 45%, transparent); background:color-mix(in srgb, var(--tinta) 14%, transparent); color:var(--text)}
 .reloj-centro{position:absolute; inset:0; display:grid; place-content:center; gap:var(--s1)}
-.reloj-num{font-family:var(--font-display); font-weight:700; font-size:clamp(56px, 18vw, 84px); line-height:1;
+.reloj-num{font-family:var(--font-display); font-weight:700; font-size:clamp(40px, 13vw, 70px); line-height:1;
   font-variant-numeric:tabular-nums; letter-spacing:-.01em}
 .reloj-estado{min-height:1.3em; font-size:var(--t-sm); font-weight:700; color:var(--muted)}
-.reloj-fila{display:flex; gap:var(--s2); width:100%}
-.reloj-fila .btn{flex:1 1 0; min-width:0; min-height:48px}
 .reloj-rapidos{display:flex; flex-wrap:wrap; justify-content:center; gap:var(--s2)}
 .ruedas{display:flex; justify-content:center; gap:var(--s4); width:100%}
 .rueda-col{position:relative; display:flex; flex-direction:column; align-items:center; gap:var(--s1); flex:1; max-width:150px}
 /* La franja de la fila elegida: por encima del scroll, sin tapar los toques. */
 .rueda-col::before{content:''; position:absolute; left:0; right:0; top:88px; height:44px; pointer-events:none; z-index:1;
-  border-top:2px solid var(--line-fuerte); border-bottom:2px solid var(--line-fuerte)}
+  border-radius:12px; background:color-mix(in srgb, var(--tinta) 18%, transparent)}
 .rueda{width:100%; height:220px; overflow-y:auto; scroll-snap-type:y mandatory; overscroll-behavior:contain;
-  scrollbar-width:none; border-radius:var(--r2); background:var(--surface-2); touch-action:pan-y}
+  scrollbar-width:none; border-radius:var(--r2); background:color-mix(in srgb, var(--surface-2) 70%, transparent); touch-action:pan-y}
 .rueda::-webkit-scrollbar{display:none}
 .rueda-pad{height:88px}
 .rueda-item{height:44px; display:grid; place-items:center; scroll-snap-align:center; cursor:pointer;
   font-family:var(--font-display); font-size:var(--t-lg); color:var(--dim); font-variant-numeric:tabular-nums}
-.rueda-item.sel{color:var(--text); font-weight:700}
+.rueda-item.sel{color:var(--text); font-weight:700; position:relative; z-index:2}
 .rueda-rot{font-size:var(--t-xs); font-weight:600; color:var(--muted)}
 .timer-pill.habt{top:calc(env(safe-area-inset-top, 0px) + var(--s2) + 104px)}
 .chk.play{font-size:var(--t-sm)}
+
+/* ---- Liquid glass en las capas flotantes ----
+   Si el navegador no desenfoca, o si el sistema pide menos transparencia (iPhone:
+   Accesibilidad → Reducir transparencia), todo vuelve a ser sólido. */
+.topbar{background:var(--vidrio); -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque); border-bottom-color:var(--vidrio-borde)}
+@media (max-width:899px){
+  /* La barra de secciones flota como una píldora de vidrio. */
+  .tabs{left:var(--s3); right:var(--s3); bottom:calc(env(safe-area-inset-bottom, 0px) + var(--s2)); padding-bottom:0;
+    border:1px solid var(--vidrio-borde); border-radius:28px; background:var(--vidrio); box-shadow:var(--vidrio-brillo);
+    -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque)}
+  .tab{border-radius:22px}
+  .tab[aria-current="page"]{background:color-mix(in srgb, var(--accent) 16%, transparent)}
+}
+.timer-pill{background:color-mix(in srgb, var(--line-fuerte) 72%, transparent); border:1px solid var(--vidrio-borde);
+  box-shadow:var(--vidrio-brillo); -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque)}
+#toast{background:color-mix(in srgb, var(--line-fuerte) 80%, transparent); border:1px solid var(--vidrio-borde); border-radius:18px;
+  box-shadow:var(--vidrio-brillo); -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .topbar{background:var(--bg)} .tabs, .reloj-caja{background:var(--surface)} .reloj{background:var(--bg)}
+  .timer-pill, #toast{background:var(--line-fuerte)}
+}
+@media (prefers-reduced-transparency:reduce){
+  .topbar{background:var(--bg)} .tabs, .reloj-caja{background:var(--surface)} .reloj{background:var(--bg)}
+  .timer-pill, #toast{background:var(--line-fuerte)}
+  .topbar, .tabs, .reloj, .reloj-caja, .timer-pill, #toast{-webkit-backdrop-filter:none; backdrop-filter:none}
+}
 
 /* ---- Pomodoro ---- */
 .pomo-reloj{font-family:var(--font-display); font-size:clamp(56px, 16vw, 88px); font-weight:700; line-height:1; letter-spacing:-.01em; text-align:center; margin-top:var(--s3)}
@@ -7103,10 +7159,32 @@ function fuenteReloj(f){
              sub: foco ? pomo.materia + (pomo.tema ? ' · ' + pomo.tema : '') : 'Levantate, tomá agua',
              terminar: foco ? 'Terminar y guardar' : 'Terminar el descanso' };
   }
-  if(f === 'habito' && habTimer)
-    return { t: habTimer, titulo: habTimer.nombre, sub: 'Al terminar se registran los minutos', paso: 60, descartar: true, terminar: 'Terminar y registrar' };
+  if(f === 'habito' && habTimer){
+    const hb = habitoDe(habTimer.id), meta = hb ? (metaDia(hb, habTimer.dia) || Number(hb.meta)) : 0;
+    return { t: habTimer, titulo: habTimer.nombre, paso: 60, descartar: true, terminar: 'Terminar y registrar',
+             tinta: hb && esColorHex(hb.color) ? hb.color : null,
+             sub: hb ? `${frecuenciaTexto(hb)} · ${fmtV(valorDia(hb.id, habTimer.dia))} / ${fmtV(meta)} min` : 'Al terminar se registran los minutos' };
+  }
   return null;
 }
+/* El color del reloj: el del hábito si es uno de hábito; si no, el de la app. */
+function tintaReloj(c){
+  return c ? `--tinta:${c};--sobre:${tintaSobre(c)}` : '--tinta:var(--accent);--sobre:var(--accent-text)';
+}
+/* Íconos de los botones del reloj (mismo trazo que los íconos de hábitos). */
+const ICO_RELOJ = {
+  pausa:  '<svg class="ico-h" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M8 5V19M16 5V19"/></svg>',
+  seguir: '<svg class="ico-h" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 4.5L19 12L7 19.5Z"/></svg>',
+  cerrar: '<svg class="ico-h" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6L18 18M18 6L6 18"/></svg>',
+  bajar:  '<svg class="ico-h" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 9L12 15L18 9"/></svg>',
+  menos:  '<svg class="ico-h" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M5 12H19"/></svg>',
+  mas:    '<svg class="ico-h" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M5 12H19M12 5V19"/></svg>',
+};
+/* Las rayitas del cuadrante: 60, una más larga cada 5 (se arman una sola vez). */
+const RELOJ_MARCAS = Array.from({ length: 60 }, (_, i) => {
+  const a = i / 60 * 2 * Math.PI, r1 = i % 5 ? 92 : 86, r2 = 97, c = Math.cos(a), s = Math.sin(a);
+  return `<line x1="${(120 + r1 * c).toFixed(1)}" y1="${(120 + r1 * s).toFixed(1)}" x2="${(120 + r2 * c).toFixed(1)}" y2="${(120 + r2 * s).toFixed(1)}"${i % 5 ? '' : ' class="larga"'}/>`;
+}).join('');
 
 function abrirReloj(estado){
   if(!reloj) relojFoco = document.activeElement;
@@ -7137,28 +7215,29 @@ function relojCorriendoHTML(){
   const f = fuenteReloj(reloj.fuente);
   if(!f) return '';
   const et = f.paso >= 60 ? `${f.paso / 60} min` : `${f.paso} s`;
-  return `<div class="reloj-caja">
+  return `<div class="reloj-caja" style="${tintaReloj(f.tinta)}">
     <div class="reloj-cab"><h2 id="reloj-tit">${esc(f.titulo)}</h2><p class="reloj-sub" id="reloj-sub">${esc(f.sub)}</p></div>
-    <div class="reloj-anillo">
-      <svg viewBox="0 0 240 240" aria-hidden="true">
-        <circle class="reloj-pista" cx="120" cy="120" r="${RELOJ_R}"/>
-        <circle class="reloj-arco" id="reloj-arco" cx="120" cy="120" r="${RELOJ_R}" stroke-dasharray="${RELOJ_C.toFixed(2)}"/>
-      </svg>
-      <div class="reloj-centro">
-        <div class="reloj-num" id="reloj-num" role="timer" aria-live="off">${fmtTiempo(restanteMs(f.t))}</div>
-        <div class="reloj-estado" id="reloj-estado"></div>
+    <div class="reloj-medio">
+      <button type="button" class="reloj-redondo" data-act="reloj-mover" data-d="-${f.paso}" aria-label="Restar ${et}" title="−${et}">${ICO_RELOJ.menos}</button>
+      <div class="reloj-anillo">
+        <svg viewBox="0 0 240 240" aria-hidden="true">
+          <circle class="reloj-pista" cx="120" cy="120" r="${RELOJ_R}"/>
+          <g class="reloj-marcas">${RELOJ_MARCAS}</g>
+          <circle class="reloj-arco" id="reloj-arco" cx="120" cy="120" r="${RELOJ_R}" stroke-dasharray="${RELOJ_C.toFixed(2)}"/>
+        </svg>
+        <div class="reloj-centro">
+          <div class="reloj-num" id="reloj-num" role="timer" aria-live="off">${fmtTiempo(restanteMs(f.t))}</div>
+          <div class="reloj-estado" id="reloj-estado"></div>
+        </div>
       </div>
+      <button type="button" class="reloj-redondo" data-act="reloj-mover" data-d="${f.paso}" aria-label="Sumar ${et}" title="+${et}">${ICO_RELOJ.mas}</button>
     </div>
-    <div class="reloj-fila">
-      <button type="button" class="btn" data-act="reloj-mover" data-d="-${f.paso}" aria-label="Restar ${et}">−${et}</button>
-      <button type="button" class="btn primary" data-act="reloj-pausa" id="reloj-pausa" aria-pressed="false" data-foco>Pausa</button>
-      <button type="button" class="btn" data-act="reloj-mover" data-d="${f.paso}" aria-label="Sumar ${et}">+${et}</button>
+    <div class="reloj-acciones">
+      ${f.descartar ? `<button type="button" class="reloj-ico peligro" data-act="reloj-descartar" aria-label="Descartar" title="Descartar">${ICO_RELOJ.cerrar}</button>` : ''}
+      <button type="button" class="reloj-ico" data-act="reloj-cerrar" aria-label="Minimizar" title="Minimizar">${ICO_RELOJ.bajar}</button>
+      <button type="button" class="reloj-pill" data-act="reloj-terminar">${esc(f.terminar)}</button>
     </div>
-    <div class="reloj-fila">
-      <button type="button" class="btn" data-act="reloj-terminar">${esc(f.terminar)}</button>
-      ${f.descartar ? '<button type="button" class="btn danger" data-act="reloj-descartar">Descartar</button>' : ''}
-      <button type="button" class="btn" data-act="reloj-cerrar">Minimizar</button>
-    </div>
+    <button type="button" class="reloj-pill grande" data-act="reloj-pausa" id="reloj-pausa" aria-pressed="false" data-foco><span id="reloj-pausa-ico">${ICO_RELOJ.pausa}</span><span id="reloj-pausa-txt">Pausa</span></button>
   </div>`;
 }
 /* Sin redibujar: el número, el arco, el estado y el botón de pausa. */
@@ -7172,21 +7251,25 @@ function pintarReloj(){
   n.textContent = fmtTiempo(resta);
   $('#reloj-arco').style.strokeDashoffset = (RELOJ_C * (1 - frac)).toFixed(2);
   $('#reloj-estado').textContent = enPausa ? 'En pausa' : '';
-  const b = $('#reloj-pausa');
-  b.textContent = enPausa ? 'Seguir' : 'Pausa'; b.setAttribute('aria-pressed', String(enPausa));
+  const b = $('#reloj-pausa'), txt = enPausa ? 'Seguir' : 'Pausa';
+  if($('#reloj-pausa-txt').textContent !== txt){
+    $('#reloj-pausa-txt').textContent = txt;
+    $('#reloj-pausa-ico').innerHTML = enPausa ? ICO_RELOJ.seguir : ICO_RELOJ.pausa;
+  }
+  b.setAttribute('aria-pressed', String(enPausa));
   $('#reloj-tit').textContent = f.titulo; $('#reloj-sub').textContent = f.sub;
 }
 
 /* ---- Elegir: la ruedita ---- */
 function relojElegirHTML(){
-  const r = reloj;
-  return `<div class="reloj-caja">
+  const r = reloj, hb = r.fuente === 'habito' ? habitoDe(r.id) : null;
+  return `<div class="reloj-caja" style="${tintaReloj(hb && esColorHex(hb.color) ? hb.color : null)}">
     <div class="reloj-cab"><h2 id="reloj-tit">${esc(r.titulo)}</h2>${r.sub ? `<p class="reloj-sub">${esc(r.sub)}</p>` : ''}</div>
-    <div class="reloj-rapidos">${r.rapidos.map((q, i) => `<button type="button" class="btn sm" data-act="reloj-rapido" data-i="${i}">${esc(q.r)}</button>`).join('')}</div>
+    <div class="reloj-rapidos">${r.rapidos.map((q, i) => `<button type="button" class="reloj-chip" data-act="reloj-rapido" data-i="${i}">${esc(q.r)}</button>`).join('')}</div>
     <div class="ruedas">${r.cols.map(ruedaHTML).join('')}</div>
-    <div class="reloj-fila">
-      <button type="button" class="btn" data-act="reloj-cerrar">Cancelar</button>
-      <button type="button" class="btn primary" data-act="reloj-empezar" data-foco>Empezar</button>
+    <div class="reloj-acciones">
+      <button type="button" class="reloj-ico" data-act="reloj-cerrar" aria-label="Cancelar" title="Cancelar">${ICO_RELOJ.cerrar}</button>
+      <button type="button" class="reloj-pill grande" data-act="reloj-empezar" data-foco>${ICO_RELOJ.seguir}<span>Empezar</span></button>
     </div>
   </div>`;
 }
