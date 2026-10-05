@@ -898,6 +898,22 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
 
 /* Editor de series dentro del modal de sesión */
 .exbox{border:1px solid var(--line); border-radius:var(--r1); padding:var(--s3); margin-bottom:var(--s3); background:var(--surface-2)}
+/* Rutinas e importación con IA */
+.rutina-dias{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:var(--s2); margin-top:var(--s3)}
+.rutina-dias .btn{flex-direction:column; align-items:flex-start; gap:var(--s1); text-align:left; min-height:56px}
+.meta-rutina{margin-bottom:var(--s3); font-size:var(--t-sm); font-weight:600; color:var(--accent)}
+.imp-pasos{margin:0 0 var(--s3); padding-left:var(--s5); font-size:var(--t-sm); line-height:1.5}
+.imp-pasos li + li{margin-top:var(--s1)}
+#imp-prompt textarea{margin-top:var(--s3); font-size:var(--t-xs)}
+.imp-error, .imp-aviso{margin:var(--s2) 0; font-size:var(--t-sm); font-weight:600; color:var(--bad)}
+.imp-aviso{color:var(--warn)}
+.imp-avisos{margin:0 0 var(--s3); padding-left:var(--s5); font-size:var(--t-xs); color:var(--warn)}
+.imp-lista{list-style:none; margin:var(--s2) 0 0; padding:0}
+.imp-lista li{display:flex; justify-content:space-between; align-items:baseline; gap:var(--s3); flex-wrap:wrap;
+  padding:var(--s2) 0; border-top:1px solid var(--line); font-size:var(--t-sm)}
+.imp-nuevo select + select{margin-top:var(--s2)}
+.imp-incluir{display:flex; align-items:center; gap:var(--s2); margin-top:var(--s3); font-size:var(--t-sm); min-height:40px}
+.imp-incluir input{width:20px; height:20px; flex:none}
 .setrow{display:grid; grid-template-columns:24px 1fr 1fr 30px; gap:var(--s2); align-items:center; margin-bottom:var(--s2)}
 .setrow input{padding:var(--s2)}
 .rir{display:flex; gap:var(--s1); flex-wrap:wrap}
@@ -1364,6 +1380,9 @@ const LARGO_PLANTILLA = 600;
 
 const TIPOS_EXAMEN = { parcial: 'Parcial', final: 'Final', entrega: 'Entrega' };
 
+/* Importar con IA: topes de lo que se acepta de una respuesta pegada (y de una rutina guardada). */
+const IMPORT_MAX = { largo: 60000, dias: 7, ejercicios: 20, series: 10, reps: 50, kg: 500, entrenamientos: 60 };
+
 /* Cuenta y sincronización (Supabase). Vacíos = la app funciona solo en este aparato, como
    siempre. La anon key es pública por diseño: lo que protege los datos es la seguridad por
    fila de la tabla (ver tools/bau-supabase.sql). */
@@ -1481,7 +1500,7 @@ function emptyState(){
   return {
     version: 1,
     profile: { bodyweightKg: 70 },
-    gym:       { sessions: [], customExercises: [] },
+    gym:       { sessions: [], customExercises: [], rutinas: [] },
     estudio:   { entries: [] },
     freelance: { items: [] },
     habitos:   { list: [], log: {}, categorias: [] },
@@ -1506,7 +1525,7 @@ function validarEstado(d){
         errs.push(`"${clave}.${l}" tendría que ser una lista`);
     }
   };
-  seccion('gym', ['sessions','customExercises']);
+  seccion('gym', ['sessions','customExercises','rutinas']);
   seccion('estudio', ['entries', 'examenes']);
   seccion('freelance', ['items']);
   seccion('habitos', ['list', 'categorias']);
@@ -1631,7 +1650,36 @@ function normalizarGym(g){
     for(const [exId, p] of Object.entries(g.progresion)){ const v = progresionValida(p); if(v) limpio[exId] = v; }
     if(Object.keys(limpio).length) g.progresion = limpio; else delete g.progresion;
   }else delete g.progresion;
+  g.rutinas = (Array.isArray(g.rutinas) ? g.rutinas : []).map(rutinaValida).filter(Boolean);
   return g;
+}
+
+/* Texto de una sola línea, sin espacios de más y con largo máximo. */
+const limpiarTexto = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n).trim();
+function enteroEn(v, min, max){ const n = Number(v); return Number.isInteger(n) && n >= min && n <= max ? n : null; }
+
+/* Una rutina guardada (o restaurada de un backup): lo roto se descarta, pieza por pieza.
+   Un día sin ejercicios no sirve, y una rutina sin días tampoco. */
+function rutinaValida(r){
+  if(!r || typeof r !== 'object' || !esIdSeguro(r.id) || !Array.isArray(r.dias)) return null;
+  const dias = [];
+  for(const d of r.dias.slice(0, IMPORT_MAX.dias)){
+    if(!d || typeof d !== 'object' || !esIdSeguro(d.id) || !Array.isArray(d.ejercicios)) continue;
+    const ejercicios = [];
+    for(const e of d.ejercicios.slice(0, IMPORT_MAX.ejercicios)){
+      if(!e || typeof e !== 'object' || !esIdSeguro(e.exId)) continue;
+      const series = enteroEn(e.series, 1, IMPORT_MAX.series), min = enteroEn(e.min, 1, IMPORT_MAX.reps),
+            max = enteroEn(e.max, 1, IMPORT_MAX.reps), name = limpiarTexto(e.name, 40);
+      if(series === null || min === null || max === null || min > max || !name) continue;
+      const x = { exId: e.exId, name, series, min, max }, kg = Number(e.kg);
+      if(Number.isFinite(kg) && kg > 0 && kg <= IMPORT_MAX.kg) x.kg = kg;
+      ejercicios.push(x);
+    }
+    if(ejercicios.length) dias.push({ id: d.id, nombre: limpiarTexto(d.nombre, 40) || 'Día', ejercicios });
+  }
+  if(!dias.length) return null;
+  return { id: r.id, nombre: limpiarTexto(r.nombre, 60) || 'Rutina',
+           creada: typeof r.creada === 'string' ? r.creada.slice(0, 10) : '', dias };
 }
 
 /* Completa las claves que falten, sección por sección. Un Object.assign plano
@@ -1716,6 +1764,199 @@ function exDef(id){ return allExercises().find(e => e.id === id) || null; }
 // dejaba afuera cualquier ejercicio sin un 100% exacto y duplicaba los que tenian dos.
 function primaryMuscle(ex){
   return Object.entries(ex.muscles).sort((a, b) => b[1] - a[1])[0][0];
+}
+// "Pecho · Tríceps 40% · Hombros 30%"
+const musculosTexto = muscles => Object.entries(muscles).map(([m, f]) =>
+  `${MUSCLES[m].label}${f < 1 ? ` ${Math.round(f * 100)}%` : ''}`).join(' · ');
+
+/* ---- Importar con IA ----
+   La app da un prompt; la persona se lo manda a cualquier IA con la foto de su rutina (o de
+   su cuaderno) y pega la respuesta. Acá se lee esa respuesta: todo es puro, salvo uid(). */
+const IMPORT_EJ_RUTINA = `{"bau":"rutina","version":1,"nombre":"Rutina del profe","dias":[
+  {"nombre":"Día A · Pecho y tríceps","ejercicios":[
+    {"id":"press-banca","nombre":"Press banca","series":4,"reps":"8-10","kg":60},
+    {"id":"nuevo","nombre":"Hack squat","series":3,"reps":"10-12","kg":null,
+     "musculos":{"cuadriceps":1,"gluteos":0.5},"peso_corporal":null}]}]}`;
+const IMPORT_EJ_REGISTRO = `{"bau":"registro","version":1,"entrenamientos":[
+  {"fecha":"2026-10-03","ejercicios":[
+    {"id":"sentadilla","nombre":"Sentadilla","rir":1,
+     "series":[{"reps":8,"kg":80},{"reps":8,"kg":80},{"reps":7,"kg":80}]}]}]}`;
+
+function promptImportar(anio = new Date().getFullYear()){
+  return [
+    'Te paso una foto de mi entrenamiento de gimnasio. Pasala al formato de mi app (Bau Tracker).',
+    '',
+    'Primero fijate qué es:',
+    '- Si es un PLAN o rutina a seguir (días con ejercicios, series y repeticiones objetivo), usá el formato "rutina".',
+    '- Si es un REGISTRO de lo que ya entrené (con los pesos y repeticiones que hice), usá el formato "registro".',
+    '',
+    'Formato "rutina":', '```json', IMPORT_EJ_RUTINA, '```',
+    'Formato "registro" ("series" es la lista de cada serie que hice):', '```json', IMPORT_EJ_REGISTRO, '```',
+    '',
+    'Reglas:',
+    '1. Respondé SOLO con el JSON dentro de un bloque de código, sin explicaciones.',
+    '2. "id": usá el id exacto de la lista de abajo si el ejercicio es el mismo o casi el mismo (por ejemplo "press plano con barra" es press-banca).',
+    '3. Si no hay ninguno equivalente, poné "id": "nuevo", el nombre como aparece, y en "musculos" los ids de músculo de abajo (1 = principal, 0.3 a 0.5 = secundario). "peso_corporal": la parte del cuerpo que se levanta (1 en dominadas, 0.65 en flexiones) o null si se usa solo peso externo.',
+    '4. "reps": un número (10) o un rango como texto ("8-10"). "kg": un número, o null si no figura. No inventes pesos.',
+    `5. "fecha": AAAA-MM-DD, o null si no aparece. Si falta el año, es ${anio}.`,
+    '6. "rir": las repeticiones que sobraron (0 = al fallo, 1, 2 o 3). Si no figura, 1.',
+    '7. Si un ejercicio va por tiempo, usá la equivalencia que dice su nombre en la lista (en la plancha 1 rep = 10 seg: 30 seg son 3 reps).',
+    '8. Si algo no se lee bien, dejalo afuera antes que inventarlo.',
+    '',
+    'Músculos: ' + MUSCLE_IDS.join(', '),
+    '',
+    'Ejercicios de la app (id — nombre):',
+    ...allExercises().map(e => `${e.id} — ${e.name}`),
+  ].join('\n');
+}
+
+const IMPORT_SIN_FORMATO = 'No encontré el formato de Bau Tracker en lo que pegaste. Copiá la respuesta entera de la IA (el bloque que empieza con { y termina con }).';
+
+/* Saca el JSON del texto pegado: desde la primera { hasta la última } (así lo que la IA diga
+   antes o después, y las marcas de bloque de código, quedan afuera). Si no parsea, prueba sin
+   comas sobrantes y después con comillas rectas. */
+function extraerJSON(texto){
+  const t = String(texto == null ? '' : texto);
+  if(t.length > IMPORT_MAX.largo) return { error: 'El texto es demasiado largo. Pegá solo la respuesta de la IA.' };
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if(a < 0 || b < a) return { error: IMPORT_SIN_FORMATO };
+  const j = t.slice(a, b + 1), sinComas = s => s.replace(/,\s*([}\]])/g, '$1');
+  for(const intento of [j, sinComas(j), sinComas(j.replace(/[\u201C\u201D]/g, '"'))]){
+    try{ return { datos: JSON.parse(intento) }; }catch(e){}
+  }
+  return { error: 'La respuesta parece cortada o mal armada. Pedile a la IA que la mande de nuevo, completa.' };
+}
+
+/* Un número aunque la IA lo mande como texto: "62,5 kg" → 62.5, "10 reps" → 10. */
+function numeroDe(v){
+  if(typeof v === 'number') return v;
+  const m = typeof v === 'string' && v.match(/\d+(?:[.,]\d+)?/);
+  return m ? Number(m[0].replace(',', '.')) : NaN;
+}
+
+/* "8-10", "8 a 10", "10" o 10 → {min, max}. */
+function rangoReps(v){
+  const m = String(v == null ? '' : v).match(/^\s*(\d{1,2})\s*(?:(?:-|–|a)\s*(\d{1,2}))?\s*$/);
+  if(!m) return null;
+  let min = +m[1], max = m[2] ? +m[2] : min;
+  if(min > max) [min, max] = [max, min];
+  return min >= 1 && max <= IMPORT_MAX.reps ? { min, max } : null;
+}
+
+/* Los músculos que manda la IA para un ejercicio nuevo: solo ids válidos, el mayor pasa a 1. */
+function musculosValidos(m){
+  if(!m || typeof m !== 'object' || Array.isArray(m)) return {};
+  const pares = Object.entries(m).filter(([id, f]) => MUSCLES[id] && Number.isFinite(Number(f)) && Number(f) > 0);
+  if(!pares.length) return {};
+  const tope = Math.max(...pares.map(([, f]) => Number(f))), out = {};
+  for(const [id, f] of pares.sort((a, b) => b[1] - a[1]).slice(0, 4)){
+    const v = Math.round(Number(f) / tope * 100) / 100;
+    if(v >= .1) out[id] = v;
+  }
+  return out;
+}
+
+/* A qué ejercicio de la app corresponde: por id, después por nombre (sin acentos ni
+   mayúsculas) y si no, uno nuevo. Los nuevos se juntan en `nuevos`, uno por nombre. */
+function resolverEjercicio(e, nuevos){
+  const nombre = limpiarTexto(e.nombre, 40), lista = allExercises(), k = claveNombre(nombre);
+  const def = (esIdSeguro(e.id) && lista.find(x => x.id === e.id)) || (k && lista.find(x => claveNombre(x.name) === k));
+  if(def) return { exId: def.id, name: def.name };
+  if(!k) return null;
+  let n = nuevos.find(x => claveNombre(x.name) === k);
+  if(!n){
+    const bw = Number(e.peso_corporal);
+    n = { id: 'cx-' + uid(), name: nombre, muscles: musculosValidos(e.musculos),
+          bw: e.peso_corporal != null && bw > 0 && bw <= 1 ? bw : null };
+    nuevos.push(n);
+  }
+  return { exId: n.id, name: n.name };
+}
+
+/* Una fecha que se puede guardar: real, de este siglo y no del futuro. */
+function fechaImportable(s, hoy = iso()){
+  return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && s >= '2000-01-01' && s <= hoy && iso(parseISO(s)) === s;
+}
+
+/* Lee la respuesta pegada. Devuelve {error} o {tipo:'rutina', rutina, nuevos, avisos}
+   o {tipo:'registro', sesiones, nuevos, avisos}. Las sesiones sin fecha legible traen date:null. */
+function leerImportacion(texto, hoy = iso()){
+  const x = extraerJSON(texto);
+  if(x.error) return { error: x.error };
+  const d = x.datos;
+  if(!d || typeof d !== 'object' || Array.isArray(d)) return { error: IMPORT_SIN_FORMATO };
+  const tipo = d.bau === 'rutina' || d.bau === 'registro' ? d.bau
+             : Array.isArray(d.dias) ? 'rutina' : Array.isArray(d.entrenamientos) ? 'registro' : null;
+  if(!tipo) return { error: IMPORT_SIN_FORMATO };
+  const avisos = [], nuevos = [], lista = v => Array.isArray(v) ? v : [];
+  const obj = v => v && typeof v === 'object' && !Array.isArray(v);
+  let omitidos = 0;
+  const avisoOmitidos = () => {
+    if(omitidos) avisos.push(omitidos === 1 ? 'Un ejercicio vino sin nombre y quedó afuera.' : `${omitidos} ejercicios vinieron sin nombre y quedaron afuera.`);
+  };
+
+  if(tipo === 'rutina'){
+    const dias = [], fuente = lista(d.dias);
+    if(fuente.length > IMPORT_MAX.dias) avisos.push(`Vinieron ${fuente.length} días: quedan los primeros ${IMPORT_MAX.dias}.`);
+    for(const dia of fuente.slice(0, IMPORT_MAX.dias)){
+      if(!obj(dia)) continue;
+      const ejercicios = [], fe = lista(dia.ejercicios);
+      if(fe.length > IMPORT_MAX.ejercicios) avisos.push(`Un día traía ${fe.length} ejercicios: quedan los primeros ${IMPORT_MAX.ejercicios}.`);
+      for(const e of fe.slice(0, IMPORT_MAX.ejercicios)){
+        if(!obj(e)) continue;
+        const r = resolverEjercicio(e, nuevos);
+        if(!r){ omitidos++; continue; }
+        let series = enteroEn(e.series, 1, IMPORT_MAX.series), rango = rangoReps(e.reps);
+        if(series === null){ series = 3; avisos.push(`${r.name}: no se leían las series, quedaron 3.`); }
+        if(!rango){ rango = { min: PROG_DEF.min, max: PROG_DEF.max }; avisos.push(`${r.name}: no se leían las reps, quedó ${PROG_DEF.min}–${PROG_DEF.max}.`); }
+        const ej = { exId: r.exId, name: r.name, series, min: rango.min, max: rango.max }, kg = numeroDe(e.kg);
+        if(e.kg != null && Number.isFinite(kg) && kg > 0 && kg <= IMPORT_MAX.kg) ej.kg = kg;
+        ejercicios.push(ej);
+      }
+      if(ejercicios.length)
+        dias.push({ id: uid(), nombre: limpiarTexto(dia.nombre, 40) || `Día ${String.fromCharCode(65 + dias.length)}`, ejercicios });
+    }
+    avisoOmitidos();
+    if(!dias.length) return { error: 'La respuesta tiene el formato, pero ningún ejercicio que se pueda cargar.' };
+    return { tipo, rutina: { id: uid(), nombre: limpiarTexto(d.nombre, 60) || 'Rutina', creada: hoy, dias }, nuevos, avisos };
+  }
+
+  const sesiones = [], fuente = lista(d.entrenamientos);
+  if(fuente.length > IMPORT_MAX.entrenamientos) avisos.push(`Vinieron ${fuente.length} entrenamientos: quedan los primeros ${IMPORT_MAX.entrenamientos}.`);
+  for(const t of fuente.slice(0, IMPORT_MAX.entrenamientos)){
+    if(!obj(t)) continue;
+    const exercises = [];
+    for(const e of lista(t.ejercicios).slice(0, IMPORT_MAX.ejercicios)){
+      if(!obj(e)) continue;
+      const r = resolverEjercicio(e, nuevos);
+      if(!r){ omitidos++; continue; }
+      const serie = s => {
+        const reps = enteroEn(numeroDe(obj(s) ? s.reps : null), 1, IMPORT_MAX.reps), kg = numeroDe(obj(s) ? s.kg : 0);
+        return reps === null ? null : { reps, kg: Number.isFinite(kg) && kg > 0 && kg <= IMPORT_MAX.kg ? kg : 0 };
+      };
+      let sets = lista(e.series).map(serie).filter(Boolean);
+      // También "series": 3, "reps": 10, "kg": 60 (las tres series iguales).
+      const n = enteroEn(e.series, 1, IMPORT_MAX.series), rango = rangoReps(e.reps);
+      if(!sets.length && n !== null && rango) sets = Array.from({ length: n }, () => serie({ reps: rango.min, kg: e.kg }));
+      sets = sets.slice(0, IMPORT_MAX.series);
+      if(!sets.length) continue;
+      const rir = enteroEn(e.rir, 0, 3);
+      exercises.push({ exId: r.exId, name: r.name, rir: rir === null ? 1 : rir, sets });
+    }
+    if(!exercises.length) continue;
+    const date = fechaImportable(t.fecha, hoy) ? t.fecha : null;
+    if(t.fecha != null && !date) avisos.push(`La fecha "${limpiarTexto(t.fecha, 20)}" no es válida: elegila abajo.`);
+    sesiones.push({ id: uid(), date, notes: limpiarTexto(t.notas, 200), exercises });
+  }
+  avisoOmitidos();
+  if(!sesiones.length) return { error: 'La respuesta tiene el formato, pero ninguna serie con repeticiones que se pueda cargar.' };
+  return { tipo, sesiones, nuevos, avisos };
+}
+
+/* ¿Ya hay un entrenamiento ese día con los mismos ejercicios? (posible importación repetida) */
+function posibleDuplicado(ses, sesiones = state.gym.sessions){
+  const clave = s => s.exercises.map(e => e.exId).sort().join('|');
+  return sesiones.some(s => s.date === ses.date && clave(s) === clave(ses));
 }
 
 /* ==========================================================================
@@ -2639,7 +2880,10 @@ function viewGym(){
             <div class="xs muted">rango global · lo marca ${esc(MUSCLES[g.weakest].label)}, tu grupo más atrasado</div>
           </div>
         </div>
-        <button class="btn primary" data-act="new-session">+ Entrenamiento</button>
+        <div class="row wrap">
+          <button class="btn" data-act="importar-ia">Importar con IA</button>
+          <button class="btn primary" data-act="new-session">+ Entrenamiento</button>
+        </div>
       </div>
       <div class="bar mt3" style="--barra:${g.rank.tier.c}">
         <i style="--p:${(g.rank.progress).toFixed(3)}"></i>
@@ -2653,6 +2897,7 @@ function viewGym(){
       </div>
     </div>
 
+    ${rutinasHTML()}
     ${suggestHTML(g)}
     ${seriesSemanaHTML()}
 
@@ -3916,6 +4161,26 @@ function seriesSemanaHTML(){
   </div>`;
 }
 
+/* Las rutinas cargadas: cada día es un botón que abre el entrenamiento ya armado. */
+const metaTexto = m => `${m.series} × ${m.min === m.max ? m.min : `${m.min}–${m.max}`}`;
+function rutinasHTML(){
+  const rs = state.gym.rutinas;
+  if(!rs.length) return '';
+  return `<div class="card mt4">
+    <h2>${rs.length > 1 ? 'Rutinas' : 'Rutina'}</h2>
+    <div class="list mt3">${rs.map(r => `<div class="item">
+      <div class="row between wrap">
+        <b>${esc(r.nombre)}</b>
+        <button class="btn sm danger" data-act="del-rutina" data-id="${r.id}">Borrar</button>
+      </div>
+      <div class="rutina-dias">${r.dias.map(d => `<button class="btn" data-act="usar-dia" data-id="${r.id}" data-dia="${d.id}">
+          <b>${esc(d.nombre)}</b>
+          <span class="xs muted">${d.ejercicios.length} ${d.ejercicios.length === 1 ? 'ejercicio' : 'ejercicios'}</span>
+        </button>`).join('')}</div>
+    </div>`).join('')}</div>
+  </div>`;
+}
+
 /* Sugerencia de entrenamiento: prioriza déficit de puntos y días sin estímulo.
    El botón abre el modal de sesión ya cargado con los ejercicios propuestos. */
 let suggestion = [];
@@ -4305,13 +4570,18 @@ function openSessionModal(id){
   openModal(existing ? 'Editar entrenamiento' : 'Nuevo entrenamiento', sessionFormHTML(), saveSession);
 }
 
-function sessionFormHTML(){
-  const opts = MUSCLE_IDS.map(mid => {
+/* Todos los ejercicios como <option>, agrupados por músculo principal. */
+function opcionesEjercicios(){
+  return MUSCLE_IDS.map(mid => {
     const list = allExercises().filter(e => primaryMuscle(e) === mid);
     if(!list.length) return '';
     return `<optgroup label="${esc(MUSCLES[mid].label)}">${
       list.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</optgroup>`;
   }).join('');
+}
+
+function sessionFormHTML(){
+  const opts = opcionesEjercicios();
 
   return `
     <div class="timer-chips" role="group" aria-label="Descanso">
@@ -4376,10 +4646,7 @@ function ultimaVezHTML(ex, i){
 
 function exerciseBoxHTML(ex, i){
   const def = exDef(ex.exId);
-  const musculos = def
-    ? Object.entries(def.muscles).map(([m,f]) =>
-        `${MUSCLES[m].label}${f < 1 ? ` ${Math.round(f*100)}%` : ''}`).join(' · ')
-    : '—';
+  const musculos = def ? musculosTexto(def.muscles) : '—';
   return `
     <div class="exbox">
       <div class="row between wrap">
@@ -4387,6 +4654,7 @@ function exerciseBoxHTML(ex, i){
         <button class="btn sm danger" data-act="del-ex" data-ei="${i}">✕</button>
       </div>
       <div class="xs dim" style="margin-bottom:var(--s3)">${esc(musculos)}</div>
+      ${ex.meta ? `<div class="meta-rutina">Meta de la rutina · ${metaTexto(ex.meta)}</div>` : ''}
       ${ultimaVezHTML(ex, i)}
 
       <div class="setrow xs muted"><span></span><span>Reps</span><span>Kg</span><span></span></div>
@@ -4423,6 +4691,7 @@ function saveSession(){
   });
   draft.exercises = draft.exercises.filter(ex => ex.sets.length);
   if(!draft.exercises.length){ toast('Cargá al menos una serie con reps.'); return false; }
+  draft.exercises.forEach(ex => { delete ex.meta; });   // la meta es de la rutina, no del historial
 
   // Récords: se miden contra el historial SIN esta sesión (esRecord la excluye).
   const records = draft.exercises.filter(ex => esRecord(draft, ex)).map(ex => ex.name);
@@ -4705,6 +4974,173 @@ function abrirValorDia(id, dia){
   openModal('Sesión sugerida', sessionFormHTML(), saveSession);
 }
 
+/* Un día de la rutina: el entrenamiento ya armado, con la meta a la vista. El peso de la
+   rutina se pone solo si el ejercicio no tiene historial (si lo tiene, manda la sugerencia). */
+function abrirDiaRutina(rid, did){
+  const r = state.gym.rutinas.find(x => x.id === rid), d = r && r.dias.find(x => x.id === did);
+  if(!d) return;
+  const id = uid(), hoy = iso();
+  draft = { id, date: hoy, notes: '', exercises: d.ejercicios.filter(e => exDef(e.exId)).map(e => {
+    const kg = e.kg && !ultimaVez(e.exId, hoy, id) ? e.kg : '';
+    return { exId: e.exId, name: exDef(e.exId).name, rir: 1, meta: { series: e.series, min: e.min, max: e.max },
+             sets: Array.from({ length: e.series }, () => ({ reps: '', kg })) };
+  }) };
+  openModal(d.nombre, sessionFormHTML(), saveSession);
+}
+
+/* ---- Importar con IA: los dos pasos del modal ---- */
+let importacion = null, importTexto = '';
+
+function abrirImportar(){
+  openModal('Importar con IA', `
+    <ol class="imp-pasos">
+      <li>Copiá el prompt.</li>
+      <li>Pegalo en ChatGPT, Claude o Gemini y mandá junto la foto de tu rutina o de tu cuaderno.</li>
+      <li>Copiá la respuesta entera y pegala acá abajo.</li>
+    </ol>
+    <button type="button" class="btn" data-act="copiar-prompt">Copiar prompt</button>
+    <div id="imp-prompt"></div>
+    <div class="field mt3"><label for="imp-texto">Respuesta de la IA</label>
+      <textarea id="imp-texto" rows="6" spellcheck="false" placeholder="Pegá acá lo que te respondió">${esc(importTexto)}</textarea></div>
+    <p id="imp-error" class="imp-error" role="alert" hidden></p>
+    <p class="xs muted">Sirve para una rutina a seguir (se guarda con sus días) o para lo que ya entrenaste (va al historial). Antes de guardar ves todo.</p>`,
+    revisarImportacion, 'Revisar');
+}
+
+function revisarImportacion(){
+  importTexto = $('#imp-texto').value;
+  const r = leerImportacion(importTexto);
+  if(r.error){
+    const el = $('#imp-error');
+    el.textContent = r.error; el.hidden = false;
+    return false;
+  }
+  importacion = r;
+  openModal(r.tipo === 'rutina' ? 'Revisar rutina' : 'Revisar entrenamientos', revisionHTML(r), guardarImportacion, 'Guardar');
+  return false;   // el openModal de arriba ya reemplazó el diálogo
+}
+
+function revisionHTML(r){
+  const nuevosIds = new Set(r.nuevos.map(n => n.id));
+  const marca = id => nuevosIds.has(id) ? ' <span class="pill">Nuevo</span>' : '';
+  const fila = (nombre, id, detalle) => `<li><span>${esc(nombre)}${marca(id)}</span><span class="xs muted">${esc(detalle)}</span></li>`;
+  const cuerpo = r.tipo === 'rutina'
+    ? `<p class="xs muted">${esc(r.rutina.nombre)} · ${r.rutina.dias.length} ${r.rutina.dias.length === 1 ? 'día' : 'días'}.
+         El rango de reps de cada ejercicio pasa a ser su rango de progresión.</p>
+       ${r.rutina.dias.map(d => `<div class="exbox"><b>${esc(d.nombre)}</b>
+         <ul class="imp-lista">${d.ejercicios.map(e => fila(e.name, e.exId, metaTexto(e) + (e.kg ? ` · ${fmtKg(e.kg)} kg` : ''))).join('')}</ul>
+       </div>`).join('')}`
+    : r.sesiones.map((s, i) => {
+        const dup = s.date && posibleDuplicado(s);
+        return `<div class="exbox">
+          <div class="field"><label for="imp-fecha-${i}">Fecha${s.date ? '' : ' · no figuraba en la foto'}</label>
+            <input id="imp-fecha-${i}" type="date" max="${iso()}" value="${s.date || iso()}" data-imp-fecha="${i}"></div>
+          ${dup ? '<p class="imp-aviso">Ya hay un entrenamiento igual ese día: quedó sin marcar.</p>' : ''}
+          <ul class="imp-lista">${s.exercises.map(e => fila(e.name, e.exId, resumenSeries(e.sets))).join('')}</ul>
+          <label class="imp-incluir"><input type="checkbox" data-imp-incluir="${i}" ${dup ? '' : 'checked'}> Cargar este entrenamiento</label>
+        </div>`;
+      }).join('');
+  const nuevos = r.nuevos.length ? `<div class="exbox"><b>Ejercicios nuevos</b>
+      <p class="xs muted">No estaban en la app: se crean con estos músculos. Si es uno que ya existe, elegilo.</p>
+      ${r.nuevos.map(n => {
+        const conMusculo = Object.keys(n.muscles).length > 0;
+        return `<div class="field imp-nuevo">
+          <label for="imp-rz-${n.id}">${esc(n.name)} · ${conMusculo ? esc(musculosTexto(n.muscles)) : 'sin músculo'}</label>
+          <select id="imp-rz-${n.id}" data-imp-reemplazo="${n.id}"><option value="">Crear como ejercicio nuevo</option>${opcionesEjercicios()}</select>
+          ${conMusculo ? '' : `<select data-imp-musculo="${n.id}" aria-label="Músculo principal de ${esc(n.name)}">
+            <option value="">Elegí el músculo principal</option>
+            ${MUSCLE_IDS.map(m => `<option value="${m}">${esc(MUSCLES[m].label)}</option>`).join('')}</select>`}
+        </div>`;
+      }).join('')}
+    </div>` : '';
+  const avisos = r.avisos.length ? `<ul class="imp-avisos">${r.avisos.map(a => `<li>${esc(a)}</li>`).join('')}</ul>` : '';
+  return `${avisos}${cuerpo}${nuevos}<button type="button" class="btn sm" data-act="imp-volver">← Volver a pegar</button>`;
+}
+
+/* Guardar lo revisado: los nuevos se crean o se cambian por el elegido, y todo se puede deshacer. */
+function guardarImportacion(){
+  const r = importacion;
+  if(!r) return true;
+  // En un registro solo cuentan los entrenamientos marcados (y los nuevos que aparecen en ellos).
+  const marcadas = r.tipo === 'rutina' ? [] : r.sesiones.map((s, i) => i).filter(i => {
+    const m = $(`[data-imp-incluir="${i}"]`);
+    return m && m.checked;
+  });
+  if(r.tipo === 'registro' && !marcadas.length){ toast('No quedó ningún entrenamiento marcado para cargar.'); return false; }
+  const enJuego = new Set(r.tipo === 'rutina'
+    ? r.rutina.dias.flatMap(d => d.ejercicios.map(e => e.exId))
+    : marcadas.flatMap(i => r.sesiones[i].exercises.map(e => e.exId)));
+  const destino = {}, crear = [];
+  for(const n of r.nuevos.filter(x => enJuego.has(x.id))){
+    const rz = exDef(($(`[data-imp-reemplazo="${n.id}"]`) || {}).value || '');
+    if(rz){ destino[n.id] = rz; continue; }
+    let muscles = n.muscles;
+    if(!Object.keys(muscles).length){
+      const m = ($(`[data-imp-musculo="${n.id}"]`) || {}).value;
+      if(!MUSCLES[m]){ toast(`Elegí el músculo principal de ${n.name}.`); return false; }
+      muscles = { [m]: 1 };
+    }
+    const ex = { id: n.id, name: n.name, muscles, bw: n.bw };
+    crear.push(ex); destino[n.id] = ex;
+  }
+  const fijar = e => { const d = destino[e.exId]; if(d){ e.exId = d.id; e.name = d.name; } return e; };
+  const raiz = state, g = state.gym;
+
+  if(r.tipo === 'rutina'){
+    const rutina = JSON.parse(JSON.stringify(r.rutina));
+    rutina.dias.forEach(d => d.ejercicios.forEach(fijar));
+    const progAntes = g.progresion ? JSON.parse(JSON.stringify(g.progresion)) : null;
+    g.customExercises.push(...crear);
+    aplicarRangosRutina(rutina);
+    g.rutinas.unshift(rutina);
+    save();
+    importacion = null; importTexto = '';
+    toast(`Rutina cargada · ${rutina.dias.length} ${rutina.dias.length === 1 ? 'día' : 'días'}`, { accion: { texto: 'Deshacer',
+      fn: () => deshacerImportacion(raiz, { rutina: rutina.id, creados: crear.map(c => c.id), progresion: progAntes }) } });
+    return true;
+  }
+
+  const sesiones = [];
+  for(const i of marcadas){
+    const s = r.sesiones[i], f = ($(`[data-imp-fecha="${i}"]`) || {}).value;
+    if(!fechaImportable(f)){ toast(`Revisá la fecha del entrenamiento ${i + 1}: no puede ser del futuro.`); return false; }
+    sesiones.push({ id: s.id, date: f, notes: s.notes,
+      exercises: s.exercises.map(e => fijar(Object.assign({}, e, { sets: e.sets.map(x => Object.assign({}, x)) }))) });
+  }
+  const antes = computeGym().totalPts;
+  g.customExercises.push(...crear);
+  g.sessions.push(...sesiones);
+  save();
+  const delta = computeGym().totalPts - antes;
+  importacion = null; importTexto = '';
+  toast(`${sesiones.length === 1 ? 'Entrenamiento cargado' : `${sesiones.length} entrenamientos cargados`} · +${fmtNum(delta, 1)} puntos`,
+    { accion: { texto: 'Deshacer', fn: () => deshacerImportacion(raiz, { sesiones: sesiones.map(s => s.id), creados: crear.map(c => c.id) }) } });
+  return true;
+}
+
+/* El rango de reps de la rutina pasa a ser el de doble progresión. Las reps fijas (4 × 10) no
+   son un rango: progresionValida las rechaza y el ejercicio sigue con el suyo. */
+function aplicarRangosRutina(r){
+  for(const d of r.dias) for(const e of d.ejercicios){
+    const p = progresionValida({ min: e.min, max: e.max, inc: progresionDe(e.exId).inc });
+    if(p){ state.gym.progresion = state.gym.progresion || {}; state.gym.progresion[e.exId] = p; }
+  }
+}
+
+function deshacerImportacion(raiz, q){
+  // Si en el medio se importó un backup o se borró todo, `state` es otro objeto.
+  if(state !== raiz) return;
+  const g = state.gym;
+  if(q.sesiones) g.sessions = g.sessions.filter(s => !q.sesiones.includes(s.id));
+  if(q.rutina) g.rutinas = g.rutinas.filter(x => x.id !== q.rutina);
+  if('progresion' in q){ if(q.progresion) g.progresion = q.progresion; else delete g.progresion; }
+  // Los ejercicios creados se van, salvo que ya se hayan usado en otro lado.
+  const enUso = new Set(g.sessions.flatMap(s => s.exercises.map(e => e.exId))
+    .concat(g.rutinas.flatMap(x => x.dias.flatMap(d => d.ejercicios.map(e => e.exId)))));
+  g.customExercises = g.customExercises.filter(c => !q.creados.includes(c.id) || enUso.has(c.id));
+  save(); render();
+}
+
 function handleAction(act, btn, ev){
   const id = btn.dataset.id;
 
@@ -4720,6 +5156,24 @@ function handleAction(act, btn, ev){
     break;
   }
   case 'quick-session': openQuickSession(); break;
+  case 'usar-dia': abrirDiaRutina(id, btn.dataset.dia); break;
+  case 'del-rutina': borrarDeLista(state.gym.rutinas, id, 'Rutina borrada'); break;
+  case 'importar-ia':
+  case 'imp-volver': abrirImportar(); break;
+  case 'copiar-prompt': {
+    const txt = promptImportar();
+    const ok = () => toast('Prompt copiado: pegalo en la IA junto con la foto');
+    // Si el navegador no deja copiar, el prompt aparece entero y seleccionado.
+    const mal = () => {
+      const caja = $('#imp-prompt');
+      if(!caja) return;
+      caja.innerHTML = `<textarea id="imp-prompt-txt" readonly rows="6">${esc(txt)}</textarea>
+        <p class="xs muted">No se pudo copiar solo: mantené apretado el texto (o Ctrl+C) para copiarlo.</p>`;
+      const ta = $('#imp-prompt-txt'); ta.focus(); ta.select();
+    };
+    try{ navigator.clipboard.writeText(txt).then(ok, mal); }catch(e){ mal(); }
+    break;
+  }
 
   /* --- modal genérico --- */
   case 'close-modal': closeModal(); break;
