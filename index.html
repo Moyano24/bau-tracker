@@ -41,6 +41,7 @@
      desde abajo o baja desde arriba. */
   --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer:cubic-bezier(0.32, 0.72, 0, 1);
+  --r-pildora:999px;
   /* Vidrio ("liquid glass") SOLO para lo que flota sobre el contenido: las barras, las
      píldoras de los temporizadores, el aviso y el reloj. Las tarjetas siguen planas:
      ahí se leen datos y el fondo traslúcido los ensuciaría. */
@@ -277,6 +278,8 @@ button{font-family:inherit}
 .btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-text)}
 @media (hover:hover) and (pointer:fine){ .btn.primary:hover{filter:brightness(1.08)} }
 .btn.sm{padding:var(--s1) var(--s2); font-size:var(--t-xs)}
+.btn, .btn.sm{border-radius:var(--r-pildora)}
+.btn.primary{box-shadow:inset 0 1px 0 color-mix(in srgb, #fff 35%, transparent)}
 .btn.danger{color:var(--bad)}
 /* La acción destructiva de un diálogo de confirmación: rellena, no solo teñida. */
 .btn.peligro{background:var(--bad); border-color:var(--bad); color:var(--bg)}
@@ -988,36 +991,52 @@ body.reloj-abierto{overflow:hidden}
 /* ---- Liquid glass en las capas flotantes ----
    Si el navegador no desenfoca, o si el sistema pide menos transparencia (iPhone:
    Accesibilidad → Reducir transparencia), todo vuelve a ser sólido. */
-.topbar{background:var(--vidrio); -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque); border-bottom-color:transparent;
-  transition:border-color .2s}
-.topbar.scrolleado{border-bottom-color:var(--vidrio-borde)}
+/* Sin línea: el contenido que pasa por debajo se desenfoca hacia arriba (como en Ajustes de iOS).
+   La capa de desenfoque va detrás del título y se desvanece con una máscara. */
+.topbar{background:transparent; border-bottom:0}
+.topbar::before{content:""; position:absolute; inset:0 0 -28px 0; z-index:-1; pointer-events:none;
+  -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  background:linear-gradient(var(--bg) 0%, color-mix(in srgb, var(--bg) 72%, transparent) 62%, transparent 100%);
+  -webkit-mask-image:linear-gradient(#000 62%, transparent); mask-image:linear-gradient(#000 62%, transparent)}
 @media (min-width:900px){ .tab-ind{display:none} }
 @media (max-width:899px){
-  /* La barra de secciones flota como una píldora de vidrio. */
-  .tabs{left:var(--s3); right:var(--s3); bottom:calc(env(safe-area-inset-bottom, 0px) + var(--s2)); padding-bottom:0;
-    border:1px solid var(--vidrio-borde); border-radius:28px; background:var(--vidrio); box-shadow:var(--vidrio-brillo);
-    -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque)}
-  .tab{border-radius:22px; position:relative; z-index:1}
-  /* La burbuja de la sección actual: la mueve el JS con un resorte (y se puede arrastrar). */
-  .tab-ind{position:absolute; left:0; top:4px; bottom:4px; z-index:0; border-radius:22px; pointer-events:none;
-    background:color-mix(in srgb, var(--accent) 16%, transparent); border:1px solid var(--vidrio-borde); box-shadow:var(--vidrio-brillo);
+  /* La barra de secciones: una píldora de vidrio de 61 de alto con 21 de margen (las medidas de
+     la barra de iOS 26). Con el dedo arriba no se selecciona texto ni sale la lupa de iOS. */
+  .tabs{left:21px; right:21px; height:61px; bottom:calc(env(safe-area-inset-bottom, 0px) + var(--s2)); padding-bottom:0;
+    border:1px solid var(--vidrio-borde); border-radius:var(--r-pildora); background:var(--vidrio); box-shadow:var(--vidrio-brillo);
+    -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque);
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:none}
+  .tab{border-radius:var(--r-pildora); position:relative; z-index:1; justify-content:center}
+  /* La sección actual se pinta en la capa azul (.tabs-azul), recortada por la burbuja: el azul
+     entra y sale de cada sección a medida que la burbuja pasa por encima. */
+  .tab[aria-current="page"]{color:var(--dim)}
+  /* La burbuja: neutra, la mueve el JS con un resorte (y se puede arrastrar). */
+  .tab-ind{position:absolute; left:0; top:4px; bottom:4px; z-index:0; border-radius:var(--r-pildora); pointer-events:none;
+    background:color-mix(in srgb, var(--text) 10%, transparent); border:1px solid var(--vidrio-borde); box-shadow:var(--vidrio-brillo);
     transition:scale .15s ease-out}
+  .tabs-azul{position:absolute; inset:0; display:flex; z-index:2; pointer-events:none; color:var(--accent)}
+  /* Misma caja que el botón de verdad: si no, el texto azul queda corrido sobre el gris. */
+  .tabs-azul .tab{color:var(--accent); background:none; font:inherit; font-size:10px; font-weight:600; line-height:normal; padding:var(--s2) var(--s1)}
   .tabs{transition:scale .15s ease-out}
   .tabs.apretada{scale:1.03}
-  .tabs.apretada .tab-ind{scale:1.08 1.12; background:color-mix(in srgb, var(--accent) 24%, transparent)}
+  .tabs.apretada .tab-ind{scale:1.08 1.12; background:color-mix(in srgb, var(--text) 16%, transparent)}
+  main{padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px))}
+  #toast{bottom:calc(86px + env(safe-area-inset-bottom, 0px))}
+  .sel-barra{bottom:calc(84px + env(safe-area-inset-bottom, 0px))}
 }
+@media (min-width:900px){ .tabs-azul{display:none} }
 .timer-pill{background:color-mix(in srgb, var(--line-fuerte) 72%, transparent); border:1px solid var(--vidrio-borde);
   box-shadow:var(--vidrio-brillo); -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque)}
 #toast{background:color-mix(in srgb, var(--line-fuerte) 80%, transparent); border:1px solid var(--vidrio-borde); border-radius:18px;
   box-shadow:var(--vidrio-brillo); -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque)}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .topbar{background:var(--bg)} .tabs, .reloj-caja{background:var(--surface)} .reloj{background:var(--bg)}
+  .topbar::before{background:var(--bg); -webkit-mask-image:none; mask-image:none} .tabs, .reloj-caja{background:var(--surface)} .reloj{background:var(--bg)}
   .timer-pill, #toast{background:var(--line-fuerte)}
 }
 @media (prefers-reduced-transparency:reduce){
-  .topbar{background:var(--bg)} .tabs, .reloj-caja{background:var(--surface)} .reloj{background:var(--bg)}
+  .topbar::before{background:var(--bg); -webkit-mask-image:none; mask-image:none} .tabs, .reloj-caja{background:var(--surface)} .reloj{background:var(--bg)}
   .timer-pill, #toast{background:var(--line-fuerte)}
-  .topbar, .tabs, .reloj, .reloj-caja, .timer-pill, #toast{-webkit-backdrop-filter:none; backdrop-filter:none}
+  .topbar::before, .tabs, .reloj, .reloj-caja, .timer-pill, #toast{-webkit-backdrop-filter:none; backdrop-filter:none}
 }
 
 /* ---- Entradas y salidas ----
@@ -1181,6 +1200,12 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
 .btn.sm, .nav-per .btn, .tira-titulo .btn, .cat-borrar{min-width:var(--toque)}
 .chk.sm, .saltar{width:var(--toque); height:var(--toque)}
 .hab-nom, button.hab-abrir{min-height:var(--toque)}
+/* Los botones de solo ícono (✕, ‹ ›, ←, ✎): círculos de vidrio de 44, como el de volver de iOS. */
+.btn-vidrio, #modal-x, [data-act="cerrar-habito"], [data-act="dia-semana"], [data-act="gym-semana"]{
+  width:var(--toque); min-width:var(--toque); height:var(--toque); padding:0; border-radius:50%;
+  background:var(--vidrio); border:1px solid var(--vidrio-borde); box-shadow:var(--vidrio-brillo); color:var(--text);
+  -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque); font-size:var(--t-md)}
+.btn.danger.btn-vidrio{color:var(--bad)}
 details.pasados summary, .icono-grupo > summary{min-height:var(--toque)}
 </style>
 </head>
@@ -1226,7 +1251,7 @@ details.pasados summary, .icono-grupo > summary{min-height:var(--toque)}
     <div class="agarre" aria-hidden="true"></div>
     <div class="modal-head">
       <h2 id="modal-title">—</h2>
-      <button class="btn sm" id="modal-x" aria-label="Cerrar">✕</button>
+      <button class="btn sm btn-vidrio" id="modal-x" aria-label="Cerrar">✕</button>
     </div>
     <div class="modal-body" id="modal-body"></div>
     <div class="modal-foot" id="modal-foot"></div>
@@ -3481,7 +3506,7 @@ function muscleDetailHTML(mus, d){
           <div><b style="font-size:var(--t-md)">${esc(MUSCLES[mus].label)}</b>
           <div class="xs muted">${r.tier.n} · entrenado ${heatLabel(d.last)}</div></div>
         </div>
-        <button class="btn sm" data-act="close-muscle">✕</button>
+        <button class="btn sm btn-vidrio" data-act="close-muscle">✕</button>
       </div>
       <div class="bar mt3" style="--barra:${r.tier.c}"><i style="--p:${(r.progress).toFixed(3)}"></i></div>
       <div class="xs muted" style="margin-top:var(--s2)">
@@ -3536,8 +3561,8 @@ function bloqueEstudio(){
           <td class="muted">${esc(x.topic || '—')}${x.fuente === 'pomodoro' ? ' <span class="xs" title="Registrada con el pomodoro">· pomodoro</span>' : ''}</td>
           <td>${x.minutes}</td>
           <td class="row">
-            <button class="btn sm" data-act="edit-study" data-id="${x.id}">✎</button>
-            <button class="btn sm danger" data-act="del-study" data-id="${x.id}">✕</button>
+            <button class="btn sm btn-vidrio" data-act="edit-study" data-id="${x.id}">✎</button>
+            <button class="btn sm danger btn-vidrio" data-act="del-study" data-id="${x.id}">✕</button>
           </td></tr>`).join('')}</tbody></table></div>`
         : `<div class="mt3">${emptyHTML('Sin sesiones cargadas.')}</div>`}
       ${verMasHTML('estudio', entriesTodas.length, entries.length)}
@@ -3585,16 +3610,16 @@ function bloqueFreelance(){
               <div class="item${vencido(i) ? ' vencido' : ''}" data-cli="${esc(i.id)}">
                 <div class="row between wrap">
                   <b>${esc(i.client)}</b>
-                  <button class="btn sm danger" data-act="del-item" data-id="${i.id}">✕</button>
+                  <button class="btn sm danger btn-vidrio" data-act="del-item" data-id="${i.id}">✕</button>
                 </div>
                 ${i.project ? `<div class="xs muted">${esc(i.project)}</div>` : ''}
                 ${Number(i.amountARS) ? `<div class="xs" style="color:var(--good)">${fmtARS(i.amountARS)}</div>` : ''}
                 <div class="row mt3">
-                  <button class="btn sm" data-act="move" data-id="${i.id}" data-dir="-1"
+                  <button class="btn sm btn-vidrio" data-act="move" data-id="${i.id}" data-dir="-1"
                     ${idx === 0 ? 'disabled' : ''} aria-label="Etapa anterior">‹</button>
-                  <button class="btn sm" data-act="move" data-id="${i.id}" data-dir="1"
+                  <button class="btn sm btn-vidrio" data-act="move" data-id="${i.id}" data-dir="1"
                     ${idx === STAGES.length-1 ? 'disabled' : ''} aria-label="Etapa siguiente">›</button>
-                  <button class="btn sm" data-act="edit-item" data-id="${i.id}">✎</button>
+                  <button class="btn sm btn-vidrio" data-act="edit-item" data-id="${i.id}">✎</button>
                 </div>
                 ${seguimientoHTML(i)}
               </div>`).join('') || `<div class="xs dim">—</div>`}
@@ -3877,7 +3902,7 @@ function tiraSemanalHTML(){
   return `<div class="tira">
     <div class="tira-dias" role="group" aria-label="Días de la semana">${botones}</div>
     <div class="tira-titulo">
-      <button type="button" class="btn sm" data-act="dia-semana" data-d="-1" aria-label="Semana anterior">‹</button>
+      <button type="button" class="btn sm btn-vidrio" data-act="dia-semana" data-d="-1" aria-label="Semana anterior">‹</button>
       <div class="tira-fecha"><b>${esHoy ? 'Hoy' : esc(mayus1(fechaLarga(sel)))}</b>${esHoy
         ? `<span class="xs muted">${esc(fechaLarga(sel))}</span>`
         : '<button type="button" class="btn sm" data-act="dia-hoy">Volver a hoy</button>'}</div>
@@ -4220,9 +4245,9 @@ function navegacionHTML(vista){
     etiqueta = `${NOMBRE_MES[m.mes][0].toUpperCase()}${NOMBRE_MES[m.mes].slice(1)} ${m.anio}`;
   }
   return `<div class="nav-per">
-    <button class="btn sm" data-act="nav-hab" data-d="1" aria-label="${vista === 'semana' ? 'Semana anterior' : 'Mes anterior'}">‹</button>
+    <button class="btn sm btn-vidrio" data-act="nav-hab" data-d="1" aria-label="${vista === 'semana' ? 'Semana anterior' : 'Mes anterior'}">‹</button>
     <b>${etiqueta}</b>
-    <button class="btn sm" data-act="nav-hab" data-d="-1" aria-label="${vista === 'semana' ? 'Semana siguiente' : 'Mes siguiente'}" ${habOffset === 0 ? 'disabled' : ''}>›</button>
+    <button class="btn sm btn-vidrio" data-act="nav-hab" data-d="-1" aria-label="${vista === 'semana' ? 'Semana siguiente' : 'Mes siguiente'}" ${habOffset === 0 ? 'disabled' : ''}>›</button>
   </div>`;
 }
 
@@ -4688,9 +4713,9 @@ function seriesSemanaHTML(){
         <div class="xs muted" style="margin-top:var(--s1)">1 serie al músculo principal y ½ a los que ayudan. La franja verde es el objetivo.</div></div>
     </div>
     <div class="nav-per">
-      <button type="button" class="btn sm" data-act="gym-semana" data-d="1" aria-label="Semana anterior">‹</button>
+      <button type="button" class="btn sm btn-vidrio" data-act="gym-semana" data-d="1" aria-label="Semana anterior">‹</button>
       <b>${titulo}</b>
-      <button type="button" class="btn sm" data-act="gym-semana" data-d="-1" aria-label="Semana siguiente" ${gymSemana === 0 ? 'disabled' : ''}>›</button>
+      <button type="button" class="btn sm btn-vidrio" data-act="gym-semana" data-d="-1" aria-label="Semana siguiente" ${gymSemana === 0 ? 'disabled' : ''}>›</button>
     </div>
     <div class="series">${filas}</div>
   </div>`;
@@ -4836,7 +4861,7 @@ function renderInterno(){
   // categoría y Deshacer renderizan la pantalla de atrás, no el diálogo).
   const chipsAbiertos = $('#hb-cats');
   if(chipsAbiertos) chipsAbiertos.innerHTML = catsFormHTML();
-  $$('.tab').forEach(t => {
+  $$('.tabs > .tab').forEach(t => {
     if(t.dataset.view === view) t.setAttribute('aria-current','page');
     else t.removeAttribute('aria-current');
     if(t.dataset.view === view && typeof moverIndicador === 'function') moverIndicador(t);
@@ -5135,7 +5160,7 @@ function sessionFormHTML(){
       <label for="ex-pick">Agregar ejercicio</label>
       <div class="row">
         <select id="ex-pick">${opts}</select>
-        <button class="btn" data-act="add-ex">+</button>
+        <button class="btn btn-vidrio" data-act="add-ex">+</button>
       </div>
       <button class="btn sm mt3" data-act="new-custom-ex">Crear ejercicio propio</button>
     </div>
@@ -5188,7 +5213,7 @@ function exerciseBoxHTML(ex, i){
     <div class="exbox">
       <div class="row between wrap">
         <b>${esc(ex.name)}</b>
-        <button class="btn sm danger" data-act="del-ex" data-ei="${i}">✕</button>
+        <button class="btn sm danger btn-vidrio" data-act="del-ex" data-ei="${i}">✕</button>
       </div>
       <div class="xs dim" style="margin-bottom:var(--s3)">${esc(musculos)}</div>
       ${ex.meta ? `<div class="meta-rutina">Meta de la rutina · ${metaTexto(ex.meta)}</div>` : ''}
@@ -5202,7 +5227,7 @@ function exerciseBoxHTML(ex, i){
                  data-ei="${i}" data-si="${j}" data-k="reps" aria-label="Reps de la serie ${j+1}">
           <input type="number" min="0" max="999" step="0.5" inputmode="decimal" value="${s.kg ?? ''}"
                  data-ei="${i}" data-si="${j}" data-k="kg" aria-label="Kilos de la serie ${j+1}">
-          <button class="btn sm danger" data-act="del-set" data-ei="${i}" data-si="${j}" aria-label="Borrar serie">✕</button>
+          <button class="btn sm danger btn-vidrio" data-act="del-set" data-ei="${i}" data-si="${j}" aria-label="Borrar serie">✕</button>
         </div>`).join('')}
       <button class="btn sm" data-act="add-set" data-ei="${i}">+ serie</button>
 
@@ -5252,7 +5277,7 @@ function saveSession(){
 document.addEventListener('click', e => {
   const fila = e.target.closest('.rueda-item');
   if(fila){ fijarRueda(fila.closest('.rueda'), +fila.dataset.k); return; }
-  const tab = e.target.closest('.tab');
+  const tab = e.target.closest('.tabs > .tab');
   if(tab){ go(tab.dataset.view); return; }
 
   const zone = e.target.closest('[data-muscle]');
@@ -5590,7 +5615,7 @@ function abrirValorDia(id, dia){
       <div class="row">
         <button type="button" class="btn" data-act="valor-menos" aria-label="Restar ${paso}">−</button>
         <input id="hb-valor" type="number" inputmode="decimal" min="0" step="any" value="${valorDia(id, dia) || ''}" placeholder="0">
-        <button type="button" class="btn" data-act="valor-mas" aria-label="Sumar ${paso}">+</button>
+        <button type="button" class="btn btn-vidrio" data-act="valor-mas" aria-label="Sumar ${paso}">+</button>
       </div>
     </div>
     <div class="row wrap mt3">
@@ -7067,8 +7092,8 @@ function examenesHTML(){
       ${!viejo && x.horas ? `<div class="examen-semana"><span>Esta semana: <b>${fmtH(a.semanaHechas)} de ${fmtH(Math.round(a.metaSemana * 10) / 10)} h</b></span>
         <span class="muted">${a.semanaHechas >= a.metaSemana ? '✓ al día' : `faltan ${fmtH(Math.round((a.metaSemana - a.semanaHechas) * 10) / 10)} h`}</span></div>` : ''}
       <div class="row mt3">
-        ${viejo ? '' : `<button class="btn sm" data-act="edit-examen" data-id="${esc(x.id)}">✎</button>`}
-        <button class="btn sm danger" data-act="del-examen" data-id="${esc(x.id)}" aria-label="Borrar el examen">✕</button>
+        ${viejo ? '' : `<button class="btn sm btn-vidrio" data-act="edit-examen" data-id="${esc(x.id)}">✎</button>`}
+        <button class="btn sm danger btn-vidrio" data-act="del-examen" data-id="${esc(x.id)}" aria-label="Borrar el examen">✕</button>
       </div>
     </div>`;
   };
@@ -7673,16 +7698,36 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && hab
    ========================================================================== */
 let tabInd = null, tabIndX = null, tabIndAnim = null, tabArr = null, tabSuprimirClic = false;
 const barraFlotante = () => matchMedia('(max-width: 899px)').matches;
+let tabsAzul = null;
 function montarIndicadorTabs(){
   const nav = $('.tabs');
   if(!nav || tabInd) return;
   nav.insertAdjacentHTML('afterbegin', '<span class="tab-ind" aria-hidden="true"></span>');
   tabInd = nav.querySelector('.tab-ind');
+  // La capa azul: una copia de las secciones, toda en azul y recortada por la burbuja.
+  tabsAzul = document.createElement('div');
+  tabsAzul.className = 'tabs-azul'; tabsAzul.setAttribute('aria-hidden', 'true');
+  tabsAzul.innerHTML = [...nav.querySelectorAll(':scope > .tab')].map(t => `<span class="tab">${t.innerHTML}</span>`).join('');
+  nav.appendChild(tabsAzul);
   const act = nav.querySelector('.tab[aria-current="page"]');
   if(act) moverIndicador(act, true);
-  addEventListener('resize', () => { const a = $('.tabs .tab[aria-current="page"]'); if(a) moverIndicador(a, true); });
+  addEventListener('resize', () => { const a = $('.tabs > .tab[aria-current="page"]'); if(a) moverIndicador(a, true); });
 }
-function ponerIndicador(x){ tabIndX = x; if(tabInd) tabInd.style.transform = `translateX(${x.toFixed(1)}px)`; }
+/* Lo que queda a la vista de la capa azul para una burbuja en `x` con ancho `w`, en una barra
+   de ancho `W`: inset(arriba derecha abajo izquierda). Pura. */
+function recorteAzul(x, w, W){
+  const izq = Math.max(0, Math.min(x, W)), der = Math.max(0, Math.min(W - (x + w), W));
+  return `inset(0 ${der.toFixed(1)}px 0 ${izq.toFixed(1)}px)`;
+}
+function ponerIndicador(x){
+  tabIndX = x;
+  if(!tabInd) return;
+  tabInd.style.transform = `translateX(${x.toFixed(1)}px)`;
+  if(tabsAzul){
+    const nav = tabsAzul.parentElement, w = parseFloat(tabInd.style.width) || tabInd.offsetWidth;
+    tabsAzul.style.clipPath = tabsAzul.style.webkitClipPath = recorteAzul(x, w, nav.clientWidth);
+  }
+}
 function moverIndicador(tab, sinAnimar){
   if(!tabInd || !barraFlotante()) return;
   tabInd.style.width = tab.offsetWidth + 'px';
@@ -7708,7 +7753,7 @@ document.addEventListener('pointermove', e => {
   const dx = e.clientX - tabArr.x0;
   if(!tabArr.mov && Math.abs(dx) < 10) return;                    // hasta 10 px es un toque
   if(!tabArr.mov){ tabArr.mov = true; $('.tabs').classList.add('apretada'); try{ $('.tabs').setPointerCapture(e.pointerId); }catch(_){} }
-  const tabs = $$('.tabs .tab'), min = tabs[0].offsetLeft, max = tabs[tabs.length - 1].offsetLeft;
+  const tabs = $$('.tabs > .tab'), min = tabs[0].offsetLeft, max = tabs[tabs.length - 1].offsetLeft;
   let x = tabArr.base + dx;
   if(x < min) x = min - gomita(min - x, 120);                     // en las puntas, resistencia
   if(x > max) x = max + gomita(x - max, 120);
@@ -7724,7 +7769,7 @@ document.addEventListener('pointermove', e => {
   tabSuprimirClic = true; setTimeout(() => { tabSuprimirClic = false; }, 400);
   const a = arr.hist[0], b = arr.hist[arr.hist.length - 1];
   const vel = tipo === 'pointercancel' ? 0 : (b.x - a.x) / Math.max(b.t - a.t, 1) * 1000;
-  const destino = tabMasCercana(tabIndX + proyectar(vel, .99), $$('.tabs .tab'));
+  const destino = tabMasCercana(tabIndX + proyectar(vel, .99), $$('.tabs > .tab'));
   if(destino.dataset.view !== view) go(destino.dataset.view); else moverIndicador(destino);
 }));
 // El clic que llega después de arrastrar la burbuja no tiene que cambiar otra vez de sección.
