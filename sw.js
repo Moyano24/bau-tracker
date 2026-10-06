@@ -4,7 +4,7 @@
    - Íconos, manifest y librerías de afuera: primero la copia guardada (no cambian).
    - Lo que va a Supabase (cuenta y datos) nunca se guarda acá: pasa directo.
    VERSION la escribe build-web.py con un resumen del contenido: cambia sola en cada versión. */
-const VERSION = '72b7fd0a10';
+const VERSION = 'f3ce500847';
 const CACHE = 'bau-tracker-' + VERSION;
 const BASE = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
