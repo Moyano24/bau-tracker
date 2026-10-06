@@ -48,8 +48,9 @@
   --vidrio-borde:color-mix(in srgb, #FFFFFF 70%, transparent);
   --vidrio-brillo:inset 0 1px 0 color-mix(in srgb, #FFFFFF 85%, transparent);
   --velo-vidrio:color-mix(in srgb, var(--bg) 45%, transparent);
-  --desenfoque:blur(22px) saturate(1.6);
-  --desenfoque-fuerte:blur(30px) saturate(1.4);
+  /* Hasta 20 px: más desenfoque es caro, sobre todo en Safari (tirones al scrollear). */
+  --desenfoque:blur(20px) saturate(1.6);
+  --desenfoque-fuerte:blur(20px) saturate(1.4);
   --surface:#FFFFFF;
   --surface-2:#EAE7E0;
   --line:#CBC6BA;
@@ -259,7 +260,7 @@ main{padding:var(--s4); padding-bottom:96px; max-width:1100px; width:100%}
 .bar > i{
   display:block; height:100%; width:100%; background:var(--barra, var(--accent));
   transform-origin:left center; transform:scaleX(var(--p,0));
-  transition:transform .45s cubic-bezier(.2,.8,.2,1);
+  transition:transform .45s var(--ease-out);
 }
 
 button{font-family:inherit}
@@ -290,14 +291,15 @@ button{font-family:inherit}
 /* Respuesta al apoyar el dedo, sin el recuadro gris que iOS pone por defecto. */
 html{-webkit-tap-highlight-color:transparent}
 .btn, .chk, .tab{transition:transform .1s ease-out}
-.chk:active, .tab:active{transform:scale(.94)}
+.chk:active{transform:scale(.96)}
+.tab:active{transform:scale(.97)}
 .btn.primary:active{filter:none; background:color-mix(in srgb, var(--accent) 78%, var(--line-fuerte))}
 .tab:active{background:var(--surface-2)}
 .chip:active,.mbtn:active{background:var(--line)}
 .bloque:active{background:var(--line)}
 /* La celda del heatmap es chiquita: lo que se lee a ese tamaño es que se
    achique, no que cambie de color. */
-.heat .hcell:active{transform:scale(.8)}
+.heat .hcell:active{transform:scale(.92)}
 .heat .hcell{transition:transform .09s ease}
 
 /* El navegador espera ~300ms por si viene un segundo toque (doble toque =
@@ -670,7 +672,7 @@ button.hab-nom{cursor:pointer}
   transform-origin:left center; transform:scaleX(var(--p, 0));
 }
 .hab.rellena > .hab-in{position:relative}
-.hab.rellena.anima > .rell{animation:rellena .45s cubic-bezier(.2,.8,.2,1)}
+.hab.rellena.anima > .rell{animation:rellena .25s var(--ease-out)}
 @keyframes rellena{from{transform:scaleX(var(--p0))} to{transform:scaleX(var(--p, 0))}}
 
 /* La llama de racha. Plana: el cuerpo en la tinta de la tarjeta y el núcleo en su base,
@@ -687,7 +689,7 @@ button.hab-nom{cursor:pointer}
 .llama .cuerpo{transform-box:fill-box; transform-origin:50% 100%}
 .llama.on .cuerpo{animation:titila 2.6s ease-in-out var(--d, 0s) infinite}
 @keyframes titila{0%, 100%{transform:scale(1, 1)} 50%{transform:scale(.95, 1.07)}}
-.llama.enciende .llama-ico{animation:enciende .42s cubic-bezier(.2,.8,.2,1)}
+.llama.enciende .llama-ico{animation:enciende .42s var(--ease-out)}
 @keyframes enciende{0%{transform:scale(.6)} 60%{transform:scale(1.18)} 100%{transform:scale(1)}}
 .chispa{position:absolute; top:3px; width:3px; height:3px; border-radius:50%; background:var(--sobre); opacity:0}
 .chispa.a{left:5px}
@@ -938,7 +940,7 @@ body.reloj-abierto{overflow:hidden}
 .reloj-fantasma{pointer-events:none}
 .reloj-listo .reloj-anillo{max-width:200px; width:52vw; flex:none}
 .reloj-anillo svg.reloj-ok{position:absolute; left:28%; top:28%; width:44%; height:44%; transform:none; fill:none; stroke:var(--tinta); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
-.reloj-ok path{stroke-dasharray:1; stroke-dashoffset:1; animation:dibujarOk .45s cubic-bezier(.2, .8, .2, 1) .1s forwards}
+.reloj-ok path{stroke-dasharray:1; stroke-dashoffset:1; animation:dibujarOk .45s var(--ease-out) .1s forwards}
 @keyframes dibujarOk{to{stroke-dashoffset:0}}
 .haptico{position:fixed; left:-9px; top:0; width:1px; height:1px; overflow:hidden; opacity:0; pointer-events:none}
 .rueda-item{will-change:transform, opacity}
@@ -951,7 +953,7 @@ body.reloj-abierto{overflow:hidden}
 .reloj-ico{width:48px; height:48px; border:1px solid transparent; background:none}
 .reloj-ico.peligro{color:var(--bad)}
 .reloj-redondo, .reloj-ico, .reloj-pill, .reloj-chip{transition:transform .1s ease-out}
-.reloj-redondo:active, .reloj-ico:active, .reloj-pill:active, .reloj-chip:active{transform:scale(.94)}
+.reloj-redondo:active, .reloj-ico:active, .reloj-pill:active, .reloj-chip:active{transform:scale(.96)}
 .reloj-pill{flex:1; min-width:0; min-height:52px; padding:0 var(--s4); border:0; border-radius:99px; cursor:pointer;
   display:inline-flex; align-items:center; justify-content:center; gap:var(--s2);
   background:var(--tinta); color:var(--sobre); font:inherit; font-weight:700; font-size:var(--t-sm)}
@@ -1150,7 +1152,7 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
 #rankup{position:fixed; inset:0; z-index:90; display:flex; align-items:center; justify-content:center;
   background:color-mix(in srgb, var(--bg) 92%, transparent); cursor:pointer; overflow:hidden}
 #rankup[hidden]{display:none}
-.rankup-card{animation:pop .5s cubic-bezier(.2,.8,.2,1) both; text-align:center; padding:var(--s7) var(--s6)}
+.rankup-card{animation:pop .5s var(--ease-out) both; text-align:center; padding:var(--s7) var(--s6)}
 .conf{position:absolute; top:-14px; width:7px; height:13px; border-radius:2px; animation:fall 2.6s linear forwards}
 
 /* Movimiento reducido NO es "sin respuesta": es la versión que no marea.
@@ -7377,12 +7379,14 @@ let relojArr = null;
 /* Pura: ¿al soltar se minimiza o vuelve? Con la posición proyectada por la velocidad. */
 function decidirSoltarReloj(y, vel, alto){ return y + proyectar(vel) > alto * .35 ? 'cerrar' : 'volver'; }
 document.addEventListener('pointerdown', e => {
-  if(!reloj || reloj.modo === 'elegir' || e.button || movReducido()) return;
+  if(relojArr || !reloj || reloj.modo === 'elegir' || e.button || movReducido()) return;   // un segundo dedo no pisa el arrastre
   const zona = e.target.closest && e.target.closest('#reloj .reloj-agarre, #reloj .reloj-cab');
   if(!zona) return;
   if(relojAnim){ relojAnim.detener(); relojAnim = null; }        // se puede agarrar en vuelo
   const caja = $('#reloj .reloj-caja');
-  relojArr = { id: e.pointerId, y0: e.clientY, base: 0, alto: caja ? caja.offsetHeight : innerHeight, hist: [{ t: e.timeStamp, y: e.clientY }] };
+  // Si se agarra mientras vuelve con el resorte, arranca desde donde SE VE (no salta al reposo).
+  const enVuelo = caja && caja.style.transform.match(/translateY\((-?[\d.]+)px\)/);
+  relojArr = { id: e.pointerId, y0: e.clientY, base: enVuelo ? +enVuelo[1] : 0, alto: caja ? caja.offsetHeight : innerHeight, hist: [{ t: e.timeStamp, y: e.clientY }] };
   try{ zona.setPointerCapture(e.pointerId); }catch(_){}
 });
 document.addEventListener('pointermove', e => {
@@ -7680,7 +7684,7 @@ function tabMasCercana(x, tabs){
   return tabs.reduce((mejor, t) => Math.abs(t.offsetLeft - x) < Math.abs(mejor.offsetLeft - x) ? t : mejor, tabs[0]);
 }
 document.addEventListener('pointerdown', e => {
-  if(e.button || !barraFlotante() || !tabInd) return;
+  if(tabArr || e.button || !barraFlotante() || !tabInd) return;                   // un segundo dedo no pisa el arrastre
   const nav = e.target.closest && e.target.closest('.tabs');
   if(!nav) return;
   if(tabIndAnim){ tabIndAnim.detener(); tabIndAnim = null; }
