@@ -254,6 +254,13 @@ main{padding:var(--s4); padding-bottom:96px; max-width:1100px; width:100%}
 .sync-ind[data-estado="error"]::after, .sync-ind[data-estado="conflicto"]::after{background:var(--bad)}
 .cuenta-lados{display:grid; gap:var(--s2); margin-top:var(--s3)}
 .cuenta-lados .btn{justify-content:flex-start; text-align:left; min-height:52px}
+/* Siri y Atajos: cada dato para copiar en su renglón (la clave pública es larga: se corta donde sea). */
+.atajo-dato{display:grid; grid-template-columns:1fr auto; gap:var(--s1) var(--s2); align-items:center; margin-top:var(--s3)}
+.atajo-dato > .xs{grid-column:1 / -1}
+.atajo-dato code{display:block; min-width:0; max-height:4.6em; overflow:auto; overflow-wrap:anywhere; font-size:var(--t-xs);
+  padding:var(--s2); border:1px solid var(--line); border-radius:8px; background:var(--surface-2); user-select:all; -webkit-user-select:all}
+.atajo-pasos{margin:var(--s3) 0 0; padding-left:1.3em}
+.atajo-pasos li{margin-top:var(--s2)}
 
 /* Barra plana. Anima con transform, no con width: animar width obliga al
    navegador a rehacer el layout en cada cuadro. */
@@ -4421,6 +4428,7 @@ function viewHabitos(){
 function viewAjustes(){
   return `
     ${cuentaHTML()}
+    ${atajosHTML()}
     <div class="card${syncConfigurada() ? ' mt4' : ''}">
       <h2>Apariencia</h2>
       <p class="xs muted mt3">El tema vive en este aparato y no viaja en el backup.</p>
@@ -5939,6 +5947,45 @@ function handleAction(act, btn, ev){
   }
   case 'pomo-terminar': terminarPomo(); break;
   case 'cuenta-salir': salirCuenta(); break;
+  case 'atajo-crear': {
+    btn.disabled = true;
+    asegurarNube().then(n => n && n.rpc('crear_clave_atajos', { p_zona: zonaAparato() })).then(r => {
+      if(!r || r.error || typeof r.data !== 'string'){ toast(r && faltaSqlAtajos(r.error) ? TEXTO_FALTA_SQL : 'No se pudo crear la clave. Probá de nuevo.'); btn.disabled = false; return; }
+      atajoClave = r.data; atajoBorrar = false; render();
+      const c = $('#atajos'); if(c) c.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }, () => { toast('No se pudo crear la clave. Probá de nuevo.'); btn.disabled = false; });
+    break;
+  }
+  case 'atajo-borrar': {
+    // Sin confirm() (no anda en el visor): el primer toque arma el botón y el segundo borra.
+    if(!atajoBorrar){ atajoBorrar = true; render(); break; }
+    btn.disabled = true;
+    asegurarNube().then(n => n && n.rpc('borrar_clave_atajos', {})).then(r => {
+      atajoBorrar = false; render();
+      toast(!r || r.error ? (r && faltaSqlAtajos(r.error) ? TEXTO_FALTA_SQL : 'No se pudo borrar la clave. Probá de nuevo.')
+                          : 'Clave borrada: los atajos que la usaban dejaron de andar.');
+    }, () => { atajoBorrar = false; render(); toast('No se pudo borrar la clave. Probá de nuevo.'); });
+    break;
+  }
+  case 'atajo-probar': {
+    const hb = state.habitos.list[0], salida = $('#atajo-prueba');
+    if(!hb || !atajoClave || !salida) break;
+    salida.textContent = 'Probando…';
+    asegurarNube().then(n => n.rpc('anotar_atajo', { p_clave: atajoClave, p_habito: hb.name, p_probar: true })).then(r => {
+      salida.textContent = r.error ? (faltaSqlAtajos(r.error) ? TEXTO_FALTA_SQL : 'No anduvo: ' + (r.error.message || 'error desconocido')) : String(r.data);
+    }, () => { salida.textContent = 'No anduvo: revisá la conexión.'; });
+    break;
+  }
+  case 'atajo-listo': atajoClave = null; render(); break;
+  case 'atajo-copiar': {
+    const el = $('#' + btn.dataset.de);
+    if(!el) break;
+    // Si el navegador no deja copiar, queda seleccionado para copiarlo a mano.
+    const mal = () => { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+                        toast('No se pudo copiar solo: quedó seleccionado, copialo a mano.'); };
+    try{ navigator.clipboard.writeText(el.textContent).then(() => toast('Copiado'), mal); }catch(e){ mal(); }
+    break;
+  }
   case 'cuenta-sync': {
     const s = syncInfo(); s.pendiente = s.pendiente || !estadoVacio(state); guardarSync();
     (s.pendiente ? subir() : bajar()).then(() => { if(syncEstado === 'listo') toast('Sincronizado'); else if(syncEstado === 'error' || syncEstado === 'sin-conexion') toast(TEXTO_SYNC[syncEstado]); });
@@ -6885,6 +6932,7 @@ async function salirCuenta(){
   try{ if(nube) await nube.auth.signOut(); }catch(e){}
   clearTimeout(syncTimer);
   const s = syncInfo(); s.conectado = false; guardarSync();
+  atajoClave = null; atajoBorrar = false;
   syncEstado = 'apagado'; render();
   toast('Sesión cerrada. Tus datos quedan en este aparato.');
 }
@@ -6950,6 +6998,55 @@ function cuentaHTML(){
       </div>
     </form></div>`;
 }
+
+/* ---- Siri y Atajos: anotar un hábito sin abrir la app ----
+   El atajo llama a anotar_atajo (tools/bau-atajos.sql) con una clave personal y la nube
+   guarda solo su huella. La clave se muestra UNA vez, al crearla: no se guarda en el aparato.
+   Lo anotado aparece solo al volver a la app, porque bajar() trae la versión nueva. */
+let atajoClave = null, atajoBorrar = false;
+const urlAtajo = () => configSupabase().url.replace(/\/$/, '') + '/rest/v1/rpc/anotar_atajo';
+const zonaAparato = () => { try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || null; }catch(e){ return null; } };
+function datoAtajoHTML(rotulo, valor, id){
+  return `<div class="atajo-dato"><span class="xs muted">${rotulo}</span><code id="${id}">${esc(valor)}</code>
+    <button type="button" class="btn sm" data-act="atajo-copiar" data-de="${id}" aria-label="Copiar: ${esc(rotulo)}">Copiar</button></div>`;
+}
+function atajosHTML(){
+  if(!syncConfigurada() || !syncDisponible()) return '';       // en el visor, la tarjeta de cuenta ya lo explica
+  const abre = `<div class="card mt4" id="atajos"><h2>Siri y Atajos</h2>
+    <p class="xs muted mt3">Anotá un hábito diciéndole a Siri, por ejemplo, «Tomé agua», o con un botón del widget de Atajos.
+      No abre la app: se anota en tu cuenta y lo ves la próxima vez que entrás.</p>`;
+  if(!syncActiva()) return abre + `<p class="xs mt3">Para usarlo, entrá con tu cuenta.</p></div>`;
+  if(!atajoClave) return abre + `
+    <div class="row wrap mt3">
+      <button type="button" class="btn primary" data-act="atajo-crear">Crear clave para Atajos</button>
+      <button type="button" class="btn danger" data-act="atajo-borrar">${atajoBorrar ? 'Tocá otra vez para borrarla' : 'Borrar clave'}</button>
+    </div>
+    <p class="xs muted mt3">Crear una clave nueva o borrarla hace que dejen de andar los atajos que usaban la anterior.</p></div>`;
+  const anon = configSupabase().anon, nombres = state.habitos.list.map(hb => `<b>${esc(hb.name)}</b>`).join(' · ');
+  return abre + `
+    <p class="mt3"><b>Copiá tu clave ahora: no se vuelve a mostrar.</b> Si la perdés, creá otra.</p>
+    ${datoAtajoHTML('Tu clave (p_clave)', atajoClave, 'atajo-clave')}
+    ${datoAtajoHTML('Dirección (URL)', urlAtajo(), 'atajo-url')}
+    ${datoAtajoHTML('Encabezado apikey', anon, 'atajo-apikey')}
+    ${datoAtajoHTML('Encabezado Authorization', 'Bearer ' + anon, 'atajo-auth')}
+    <ol class="atajo-pasos xs">
+      <li>En la app Atajos, tocá <b>+</b> y agregá la acción <b>Obtener contenido de URL</b>. Pegá la dirección.</li>
+      <li>Tocá la flechita: <b>Método</b> POST. En <b>Encabezados</b> agregá <b>apikey</b> y <b>Authorization</b> con lo de arriba, y <b>Accept</b> con el valor <b>text/plain</b>.</li>
+      <li>En <b>Cuerpo de la solicitud</b> elegí JSON y agregá dos campos de texto: <b>p_clave</b> (tu clave) y <b>p_habito</b> (el nombre del hábito). Para sumar otra cantidad que la del «+», agregá <b>p_cantidad</b> como número.</li>
+      <li>Agregá la acción <b>Mostrar resultado</b>: así Siri te lee cómo quedó, por ejemplo «Agua: 3 de 8 vasos».</li>
+      <li>Ponele de nombre la frase que vas a decir, por ejemplo «Tomé agua». Para otro hábito, duplicalo y cambiá solo <b>p_habito</b>.</li>
+    </ol>
+    ${nombres ? `<p class="xs mt3">Tus hábitos: ${nombres}. Alcanza con el principio del nombre y no importan las mayúsculas ni los acentos.</p>` : ''}
+    <p class="xs muted mt3">Si este aparato tenía cambios sin subir (por ejemplo, sin internet) justo cuando anotás con Siri, la app te va a preguntar con cuáles datos quedarte.</p>
+    <div class="row wrap mt3">
+      ${state.habitos.list.length ? '<button type="button" class="btn" data-act="atajo-probar">Probar sin anotar</button>' : ''}
+      <button type="button" class="btn primary" data-act="atajo-listo">Listo, ya la copié</button>
+    </div>
+    <p class="xs mt3" id="atajo-prueba" aria-live="polite"></p></div>`;
+}
+/* "No existe la función": la cuenta todavía no tiene corrido bau-atajos.sql. */
+const faltaSqlAtajos = err => /PGRST202|could not find the function|does not exist|404/i.test((err && (err.code + ' ' + err.message)) || '');
+const TEXTO_FALTA_SQL = 'Tu cuenta todavía no está lista para Atajos: falta correr tools/bau-atajos.sql en Supabase.';
 
 document.addEventListener('submit', e => {
   if(!e.target || e.target.id !== 'form-cuenta') return;
