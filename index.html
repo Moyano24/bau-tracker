@@ -282,7 +282,11 @@ button{font-family:inherit}
    El feedback va en el APRETAR, no en el soltar: `:active` entra en cuanto el
    dedo baja, sin una línea de JS. Y es mínimo —1px y un color plano— porque el
    mundo visual es señalética, no goma: un rebote acá sería de otra app. */
-.btn:active{background:var(--line); transform:translateY(1px)}
+.btn:active{background:var(--line); transform:scale(.97)}
+/* Respuesta al apoyar el dedo, sin el recuadro gris que iOS pone por defecto. */
+html{-webkit-tap-highlight-color:transparent}
+.btn, .chk, .tab{transition:transform .1s ease-out}
+.chk:active, .tab:active{transform:scale(.94)}
 .btn.primary:active{filter:none; background:color-mix(in srgb, var(--accent) 78%, var(--line-fuerte))}
 .tab:active{background:var(--surface-2)}
 .chip:active,.mbtn:active{background:var(--line)}
@@ -901,7 +905,20 @@ body.reloj-abierto{overflow:hidden}
 .reloj-anillo{position:relative; flex:1 1 0; min-width:0; max-width:260px; aspect-ratio:1}
 .reloj-anillo svg{width:100%; height:100%; transform:rotate(-90deg)}
 .reloj-pista{fill:none; stroke:color-mix(in srgb, var(--tinta) 22%, transparent); stroke-width:14}
-.reloj-arco{fill:none; stroke:var(--tinta); stroke-width:14; stroke-linecap:round; transition:stroke-dashoffset .5s linear}
+.reloj-arco{fill:none; stroke:var(--tinta); stroke-width:14; stroke-linecap:round}
+.reloj-seg circle{fill:var(--sobre); stroke:var(--tinta); stroke-width:2}
+.reloj-agarre{display:none}
+@media (max-width:699px){
+  .reloj-agarre{display:block; width:40px; height:5px; border-radius:99px; margin:calc(var(--s2) * -1) auto 0; background:var(--line); flex:none}
+  .reloj-agarre, .reloj-cab{touch-action:none}
+}
+.reloj-fantasma{pointer-events:none}
+.reloj-listo .reloj-anillo{max-width:200px; width:52vw; flex:none}
+.reloj-anillo svg.reloj-ok{position:absolute; left:28%; top:28%; width:44%; height:44%; transform:none; fill:none; stroke:var(--tinta); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
+.reloj-ok path{stroke-dasharray:1; stroke-dashoffset:1; animation:dibujarOk .45s cubic-bezier(.2, .8, .2, 1) .1s forwards}
+@keyframes dibujarOk{to{stroke-dashoffset:0}}
+.haptico{position:fixed; left:-9px; top:0; width:1px; height:1px; overflow:hidden; opacity:0; pointer-events:none}
+.rueda-item{will-change:transform, opacity}
 .reloj-marcas line{stroke:var(--dim); stroke-width:1.2; opacity:.55}
 .reloj-marcas line.larga{stroke-width:2; opacity:.9}
 /* Los botones del reloj: redondos a los costados, íconos sueltos y píldoras con el color. */
@@ -910,7 +927,8 @@ body.reloj-abierto{overflow:hidden}
 .reloj-redondo{width:52px; height:52px; border:0; background:color-mix(in srgb, var(--tinta) 20%, transparent)}
 .reloj-ico{width:48px; height:48px; border:1px solid transparent; background:none}
 .reloj-ico.peligro{color:var(--bad)}
-.reloj-redondo:active, .reloj-ico:active, .reloj-pill:active, .reloj-chip:active{transform:scale(.96)}
+.reloj-redondo, .reloj-ico, .reloj-pill, .reloj-chip{transition:transform .1s ease-out}
+.reloj-redondo:active, .reloj-ico:active, .reloj-pill:active, .reloj-chip:active{transform:scale(.94)}
 .reloj-pill{flex:1; min-width:0; min-height:52px; padding:0 var(--s4); border:0; border-radius:99px; cursor:pointer;
   display:inline-flex; align-items:center; justify-content:center; gap:var(--s2);
   background:var(--tinta); color:var(--sobre); font:inherit; font-weight:700; font-size:var(--t-sm)}
@@ -945,14 +963,23 @@ body.reloj-abierto{overflow:hidden}
 /* ---- Liquid glass en las capas flotantes ----
    Si el navegador no desenfoca, o si el sistema pide menos transparencia (iPhone:
    Accesibilidad → Reducir transparencia), todo vuelve a ser sólido. */
-.topbar{background:var(--vidrio); -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque); border-bottom-color:var(--vidrio-borde)}
+.topbar{background:var(--vidrio); -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque); border-bottom-color:transparent;
+  transition:border-color .2s}
+.topbar.scrolleado{border-bottom-color:var(--vidrio-borde)}
+@media (min-width:900px){ .tab-ind{display:none} }
 @media (max-width:899px){
   /* La barra de secciones flota como una píldora de vidrio. */
   .tabs{left:var(--s3); right:var(--s3); bottom:calc(env(safe-area-inset-bottom, 0px) + var(--s2)); padding-bottom:0;
     border:1px solid var(--vidrio-borde); border-radius:28px; background:var(--vidrio); box-shadow:var(--vidrio-brillo);
     -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque)}
-  .tab{border-radius:22px}
-  .tab[aria-current="page"]{background:color-mix(in srgb, var(--accent) 16%, transparent)}
+  .tab{border-radius:22px; position:relative; z-index:1}
+  /* La burbuja de la sección actual: la mueve el JS con un resorte (y se puede arrastrar). */
+  .tab-ind{position:absolute; left:0; top:4px; bottom:4px; z-index:0; border-radius:22px; pointer-events:none;
+    background:color-mix(in srgb, var(--accent) 16%, transparent); border:1px solid var(--vidrio-borde); box-shadow:var(--vidrio-brillo);
+    transition:scale .15s ease-out}
+  .tabs{transition:scale .15s ease-out}
+  .tabs.apretada{scale:1.03}
+  .tabs.apretada .tab-ind{scale:1.08 1.12; background:color-mix(in srgb, var(--accent) 24%, transparent)}
 }
 .timer-pill{background:color-mix(in srgb, var(--line-fuerte) 72%, transparent); border:1px solid var(--vidrio-borde);
   box-shadow:var(--vidrio-brillo); -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque)}
@@ -4739,6 +4766,7 @@ function renderInterno(){
   $$('.tab').forEach(t => {
     if(t.dataset.view === view) t.setAttribute('aria-current','page');
     else t.removeAttribute('aria-current');
+    if(t.dataset.view === view && typeof moverIndicador === 'function') moverIndicador(t);
   });
 }
 
@@ -6498,7 +6526,8 @@ function ticTimer(){
   if(restanteMs(timer) <= 0) terminoTimer(); else pintarTimer();
 }
 function terminoTimer(){
-  cerrarRelojSi('descanso');
+  // Si se estaba mirando en grande, el reloj festeja en vez de cerrarse de golpe.
+  if(relojMuestra('descanso')) relojListo('descanso', 'Descanso terminado', 'A la próxima serie');
   pararTimer();
   sonarFin();
   toast('Descanso terminado');
@@ -6880,19 +6909,21 @@ function iniciarPomo(materia, tema, foco, descanso){
 function avanzarPomo(ahora = Date.now(), silencio = false){
   if(!pomo || pomo.pausa != null || pomo.fin > ahora) return;
   if(pomo.fase === 'foco'){
-    const p = pomo;
+    const p = pomo, mirando = !silencio && relojMuestra('pomo'), min = Math.round(corridoMs(p, p.fin) / 60000);
     // Lo que corrió de verdad hasta el final (con los minutos sumados o restados, sin las pausas).
-    if(ahora - p.fin < POMO_VIEJO_MS) registrarPomo(p, Math.round(corridoMs(p, p.fin) / 60000));
+    if(ahora - p.fin < POMO_VIEJO_MS) registrarPomo(p, min);
+    if(mirando && !(p.fin + p.descanso * 60000 > ahora)) relojListo('pomo', `Pomodoro guardado: ${min} min`, p.materia);
     const finDesc = p.fin + p.descanso * 60000;
     pomo = finDesc > ahora ? { fase: 'descanso', inicio: p.fin, fin: finDesc, total: p.descanso * 60000,
                                materia: p.materia, tema: p.tema, foco: p.foco, descanso: p.descanso } : null;
     if(!silencio){ sonarFin(); }
   }else{
+    if(!silencio && relojMuestra('pomo')) relojListo('pomo', 'Terminó el descanso', 'Cuando quieras, otro bloque');
     pomo = null;
     if(!silencio){ sonarFin(); toast('Terminó el descanso: cuando quieras, otro bloque'); }
   }
   guardarPomo();
-  if(!pomo){ pararPomoTic(); cerrarRelojSi('pomo'); }
+  if(!pomo){ pararPomoTic(); if(!(reloj && reloj.modo === 'listo')) cerrarRelojSi('pomo'); }
   render();
 }
 /* Cortar antes: se guardan los minutos que corrieron de verdad (sin las pausas) si llegan al mínimo. */
@@ -7084,8 +7115,11 @@ function registrarHabTimer(t, minutos){
 function avanzarHabTimer(ahora = Date.now(), silencio = false){
   const t = habTimer;
   if(!t || t.pausa != null || t.fin > ahora) return;
-  habTimer = null; guardarHabTimer(); pararHabTic(); cerrarRelojSi('habito');
-  if(ahora - t.fin < POMO_VIEJO_MS) registrarHabTimer(t, Math.round(corridoMs(t, t.fin) / 60000));
+  const mirando = !silencio && relojMuestra('habito'), hb = habitoDe(t.id);
+  habTimer = null; guardarHabTimer(); pararHabTic();
+  const min = ahora - t.fin < POMO_VIEJO_MS ? registrarHabTimer(t, Math.round(corridoMs(t, t.fin) / 60000)) : 0;
+  if(mirando) relojListo('habito', min ? `+${min} min registrados` : 'Terminó', t.nombre, hb && esColorHex(hb.color) ? hb.color : null);
+  else cerrarRelojSi('habito');
   if(!silencio) sonarFin();
   render();
 }
@@ -7187,28 +7221,131 @@ const RELOJ_MARCAS = Array.from({ length: 60 }, (_, i) => {
 }).join('');
 
 function abrirReloj(estado){
+  const yaEstaba = !!reloj;
   if(!reloj) relojFoco = document.activeElement;
   reloj = estado;
   const el = $('#reloj');
   if(!el) return;
-  el.innerHTML = reloj.modo === 'elegir' ? relojElegirHTML() : relojCorriendoHTML();
+  clearTimeout(relojListoTimer);
+  el.innerHTML = reloj.modo === 'elegir' ? relojElegirHTML() : reloj.modo === 'listo' ? relojListoHTML() : relojCorriendoHTML();
   el.hidden = false;
   document.body.classList.add('reloj-abierto');
   if(reloj.modo === 'elegir') montarRuedas();
+  if(!yaEstaba) entradaReloj();
   pintarTimer(); pintarPomo(); pintarHabTimer();          // las píldoras se esconden mientras está grande
   const f = el.querySelector('[data-foco]');
   if(f) f.focus({ preventScroll: true });
 }
-function cerrarReloj(){
+/* `desde` = {y, v}: si lo cerró el dedo tirándolo para abajo, sale por abajo con su envión. */
+function cerrarReloj(desde){
   if(!reloj) return;
-  reloj = null;
+  clearTimeout(relojListoTimer);
+  salidaReloj(desde);
+  reloj = null; relojArr = null;
+  cancelAnimationFrame(relojRaf); relojRaf = 0;
+  if(relojAnim){ relojAnim.detener(); relojAnim = null; }
   const el = $('#reloj');
-  el.hidden = true; el.innerHTML = '';
+  el.hidden = true; el.innerHTML = ''; el.style.opacity = '';
   document.body.classList.remove('reloj-abierto');
   pintarTimer(); pintarPomo(); pintarHabTimer();
   if(relojFoco && relojFoco.focus && document.contains(relojFoco)) relojFoco.focus({ preventScroll: true });
   relojFoco = null;
 }
+
+/* ---- El final: el anillo se completa, aparece un ✓ y se cierra solo ---- */
+const RELOJ_LISTO_MS = 4000;
+let relojListoTimer = 0;
+function relojListo(fuente, texto, sub, tinta){
+  abrirReloj({ modo: 'listo', fuente, texto, sub, tinta });
+  relojListoTimer = setTimeout(() => { if(reloj && reloj.modo === 'listo') cerrarReloj(); }, RELOJ_LISTO_MS);
+}
+function relojListoHTML(){
+  const r = reloj;
+  return `<div class="reloj-caja reloj-listo" style="${tintaReloj(r.tinta)}">
+    <div class="reloj-agarre" aria-hidden="true"></div>
+    <div class="reloj-anillo">
+      <svg viewBox="0 0 240 240" aria-hidden="true">
+        <circle class="reloj-arco lleno" cx="120" cy="120" r="${RELOJ_R}" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/>
+      </svg>
+      <svg class="reloj-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5L9.5 17L19 7.5" pathLength="1"/></svg>
+    </div>
+    <div class="reloj-cab"><h2 id="reloj-tit" role="status">${esc(r.texto)}</h2>${r.sub ? `<p class="reloj-sub">${esc(r.sub)}</p>` : ''}</div>
+    <button type="button" class="reloj-pill grande" data-act="reloj-cerrar" data-foco>Listo</button>
+  </div>`;
+}
+
+/* ---- Entrar y salir "materializándose": escala + opacidad con un resorte sin rebote ----
+   La salida la hace un FANTASMA (una copia que se anima y se borra): así el reloj de verdad
+   queda cerrado al instante y nada espera a la animación. */
+let relojAnim = null;
+function ponerCaja(el, y, presencia){
+  const c = el.querySelector('.reloj-caja');
+  if(c) c.style.transform = y || presencia < 1 ? `translateY(${y.toFixed(1)}px) scale(${(.94 + .06 * presencia).toFixed(4)})` : '';
+  el.style.opacity = presencia < 1 ? Math.max(0, presencia).toFixed(3) : '';
+}
+function entradaReloj(){
+  const el = $('#reloj');
+  if(movReducido()){ ponerCaja(el, 0, 1); return; }
+  if(relojAnim) relojAnim.detener();
+  ponerCaja(el, 0, 0);
+  relojAnim = resorte({ desde: 0, hasta: 100, respuesta: .35, amortiguacion: 1,
+    paso: q => ponerCaja(el, 0, Math.min(q, 100) / 100), fin: () => { relojAnim = null; ponerCaja(el, 0, 1); } });
+}
+function salidaReloj(desde){
+  const el = $('#reloj');
+  if(!el || el.hidden || movReducido()) return;
+  const g = el.cloneNode(true);
+  g.removeAttribute('id'); g.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+  g.classList.add('reloj-fantasma'); g.setAttribute('aria-hidden', 'true'); g.inert = true;
+  document.body.appendChild(g);
+  const alto = innerHeight;
+  if(desde && (desde.y > 0 || desde.v > 0)){
+    resorte({ desde: desde.y, hasta: alto, v0: Math.max(desde.v, 0), respuesta: .3, amortiguacion: 1,
+      paso: y => ponerCaja(g, y, Math.max(0, 1 - y / alto)), fin: () => g.remove() });
+  }else{
+    const op = parseFloat(el.style.opacity || '1') * 100;
+    resorte({ desde: op, hasta: 0, respuesta: .25, amortiguacion: 1,
+      paso: q => ponerCaja(g, 0, Math.max(q, 0) / 100), fin: () => g.remove() });
+  }
+}
+
+/* ---- Tirarlo para abajo para minimizarlo (como una hoja de iOS) ----
+   Se agarra de la parte de arriba de la tarjeta; sigue al dedo 1:1 y decide con el envión. */
+let relojArr = null;
+/* Pura: ¿al soltar se minimiza o vuelve? Con la posición proyectada por la velocidad. */
+function decidirSoltarReloj(y, vel, alto){ return y + proyectar(vel) > alto * .35 ? 'cerrar' : 'volver'; }
+document.addEventListener('pointerdown', e => {
+  if(!reloj || reloj.modo === 'elegir' || e.button || movReducido()) return;
+  const zona = e.target.closest && e.target.closest('#reloj .reloj-agarre, #reloj .reloj-cab');
+  if(!zona) return;
+  if(relojAnim){ relojAnim.detener(); relojAnim = null; }        // se puede agarrar en vuelo
+  const caja = $('#reloj .reloj-caja');
+  relojArr = { id: e.pointerId, y0: e.clientY, base: 0, alto: caja ? caja.offsetHeight : innerHeight, hist: [{ t: e.timeStamp, y: e.clientY }] };
+  try{ zona.setPointerCapture(e.pointerId); }catch(_){}
+});
+document.addEventListener('pointermove', e => {
+  if(!relojArr || e.pointerId !== relojArr.id) return;
+  let y = relojArr.base + (e.clientY - relojArr.y0);
+  if(y < 0) y = -gomita(-y, relojArr.alto);                        // para arriba no hay a dónde ir
+  relojArr.y = y;
+  ponerCaja($('#reloj'), y, 1 - Math.max(0, y) / relojArr.alto * .5);
+  relojArr.hist.push({ t: e.timeStamp, y: e.clientY });
+  if(relojArr.hist.length > 5) relojArr.hist.shift();
+});
+['pointerup', 'pointercancel'].forEach(tipo => document.addEventListener(tipo, e => {
+  if(!relojArr || e.pointerId !== relojArr.id) return;
+  const a = relojArr.hist[0], b = relojArr.hist[relojArr.hist.length - 1], y = relojArr.y || 0, alto = relojArr.alto;
+  const vel = tipo === 'pointercancel' ? 0 : (b.y - a.y) / Math.max(b.t - a.t, 1) * 1000;
+  relojArr = null;
+  if(Math.abs(y) < 2 && Math.abs(vel) < 50) return;                // fue un toque, no un tirón
+  if(decidirSoltarReloj(y, vel, alto) === 'cerrar') cerrarReloj({ y, v: vel });
+  else{
+    const el = $('#reloj');
+    // Hubo envión: un poco de rebote se siente real.
+    relojAnim = resorte({ desde: y, hasta: 0, v0: vel, respuesta: .35, amortiguacion: .8,
+      paso: yy => ponerCaja(el, yy, 1 - Math.max(0, yy) / alto * .5), fin: () => { relojAnim = null; ponerCaja(el, 0, 1); } });
+  }
+}));
 function cerrarRelojSi(f){ if(reloj && reloj.fuente === f) cerrarReloj(); }
 
 function relojCorriendoHTML(){
@@ -7216,6 +7353,7 @@ function relojCorriendoHTML(){
   if(!f) return '';
   const et = f.paso >= 60 ? `${f.paso / 60} min` : `${f.paso} s`;
   return `<div class="reloj-caja" style="${tintaReloj(f.tinta)}">
+    <div class="reloj-agarre" aria-hidden="true"></div>
     <div class="reloj-cab"><h2 id="reloj-tit">${esc(f.titulo)}</h2><p class="reloj-sub" id="reloj-sub">${esc(f.sub)}</p></div>
     <div class="reloj-medio">
       <button type="button" class="reloj-redondo" data-act="reloj-mover" data-d="-${f.paso}" aria-label="Restar ${et}" title="−${et}">${ICO_RELOJ.menos}</button>
@@ -7223,7 +7361,8 @@ function relojCorriendoHTML(){
         <svg viewBox="0 0 240 240" aria-hidden="true">
           <circle class="reloj-pista" cx="120" cy="120" r="${RELOJ_R}"/>
           <g class="reloj-marcas">${RELOJ_MARCAS}</g>
-          <circle class="reloj-arco" id="reloj-arco" cx="120" cy="120" r="${RELOJ_R}" stroke-dasharray="${RELOJ_C.toFixed(2)}"/>
+          <circle class="reloj-arco" id="reloj-arco" cx="120" cy="120" r="${RELOJ_R}" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/>
+          <g class="reloj-seg" id="reloj-seg"><circle cx="${120 + RELOJ_R}" cy="120" r="4.5"/></g>
         </svg>
         <div class="reloj-centro">
           <div class="reloj-num" id="reloj-num" role="timer" aria-live="off">${fmtTiempo(restanteMs(f.t))}</div>
@@ -7247,9 +7386,9 @@ function pintarReloj(){
   if(!f){ cerrarReloj(); return; }
   const n = $('#reloj-num');
   if(!n) return;
-  const resta = restanteMs(f.t), frac = f.t.total > 0 ? Math.min(resta / f.t.total, 1) : 0, enPausa = f.t.pausa != null;
+  const resta = arcoReloj(f), enPausa = f.t.pausa != null;
   n.textContent = fmtTiempo(resta);
-  $('#reloj-arco').style.strokeDashoffset = (RELOJ_C * (1 - frac)).toFixed(2);
+  if(!enPausa && !relojRaf) animarReloj();
   $('#reloj-estado').textContent = enPausa ? 'En pausa' : '';
   const b = $('#reloj-pausa'), txt = enPausa ? 'Seguir' : 'Pausa';
   if($('#reloj-pausa-txt').textContent !== txt){
@@ -7258,6 +7397,55 @@ function pintarReloj(){
   }
   b.setAttribute('aria-pressed', String(enPausa));
   $('#reloj-tit').textContent = f.titulo; $('#reloj-sub').textContent = f.sub;
+}
+
+/* El arco y el puntito de segundos. Con el ATRIBUTO (no style): Safari no siempre toma un
+   número sin unidad en la propiedad CSS, y el atributo SVG lo acepta en todos lados.
+   pathLength = 100 → el corrimiento es directamente el porcentaje que ya pasó. */
+function arcoReloj(f, ahora = Date.now()){
+  const resta = restanteMs(f.t, ahora), frac = f.t.total > 0 ? Math.min(resta / f.t.total, 1) : 0;
+  const arco = $('#reloj-arco'), seg = $('#reloj-seg');
+  if(arco) arco.setAttribute('stroke-dashoffset', (100 * (1 - frac)).toFixed(3));
+  // El puntito da una vuelta por minuto de lo que va corriendo: siempre se ve que avanza,
+  // aunque falten 30 minutos y el arco baje de a poquito.
+  if(seg) seg.setAttribute('transform', `rotate(${((Math.max(0, f.t.total - resta) / 1000) % 60 * 6).toFixed(2)} 120 120)`);
+  return resta;
+}
+/* A 60 cuadros por segundo mientras corre y se ve (no en pausa, ni minimizado, ni con la
+   pestaña oculta). Con movimiento reducido no: alcanza con el salto de cada segundo. */
+let relojRaf = 0;
+function animarReloj(){
+  cancelAnimationFrame(relojRaf); relojRaf = 0;
+  if(movReducido()) return;
+  const paso = () => {
+    const f = reloj && reloj.modo === 'corriendo' && fuenteReloj(reloj.fuente);
+    if(!f || f.t.pausa != null || document.hidden){ relojRaf = 0; return; }
+    arcoReloj(f);
+    relojRaf = requestAnimationFrame(paso);
+  };
+  relojRaf = requestAnimationFrame(paso);
+}
+
+/* ---- Toque háptico ----
+   Android: la API de vibración. iPhone (iOS 18+): Safari no la tiene, pero alternar un
+   interruptor nativo (<input type="checkbox" switch>) da el "tic" del sistema. Solo anda
+   dentro de un gesto; si no anda, no pasa nada. Uno cada 40 ms como máximo. */
+let hapticoEtiqueta = null, hapticoUltimo = 0;
+function tocarHaptico(){
+  const ahora = performance.now();
+  if(ahora - hapticoUltimo < 40) return;
+  hapticoUltimo = ahora;
+  try{
+    if(navigator.vibrate && !/iPhone|iPad/.test(navigator.userAgent)){ navigator.vibrate(4); return; }
+    if(!hapticoEtiqueta){
+      hapticoEtiqueta = document.createElement('label');
+      hapticoEtiqueta.setAttribute('aria-hidden', 'true');
+      hapticoEtiqueta.className = 'haptico';
+      hapticoEtiqueta.innerHTML = '<input type="checkbox" switch tabindex="-1">';
+      document.body.appendChild(hapticoEtiqueta);
+    }
+    hapticoEtiqueta.click();
+  }catch(e){}
 }
 
 /* ---- Elegir: la ruedita ---- */
@@ -7289,14 +7477,35 @@ function valorRueda(scrollTop, valores, alto = RUEDA_ALTO){
   const k = Math.min(Math.max(Math.round(scrollTop / alto), 0), valores.length - 1);
   return { k, v: valores[k] };
 }
+/* Cómo se ve una fila a `d` filas del centro: curvada como un cilindro y apagándose hacia
+   los bordes, como el selector de hora del iPhone. Pura. */
+function estiloFila(d){
+  const a = Math.min(Math.abs(d), 3);
+  return { rot: Math.max(-54, Math.min(54, -d * 18)), esc: 1 - a * .06, op: Math.max(.16, 1 - a * .28) };
+}
+function curvarRueda(el){
+  const centro = el.scrollTop / RUEDA_ALTO;
+  el.querySelectorAll('.rueda-item').forEach(it => {
+    const s = estiloFila(+it.dataset.k - centro);
+    it.style.transform = `perspective(360px) rotateX(${s.rot.toFixed(1)}deg) scale(${s.esc.toFixed(3)})`;
+    it.style.opacity = s.op.toFixed(2);
+  });
+}
 function montarRuedas(){
   $$('#reloj .rueda').forEach(el => {
     const c = reloj.cols.find(x => x.id === el.dataset.rueda);
     el.scrollTop = Math.max(0, c.valores.indexOf(c.v)) * RUEDA_ALTO;
-    let espera = 0;
+    curvarRueda(el);
+    let espera = 0, cuadro = 0, ultimaFila = valorRueda(el.scrollTop, c.valores).k;
     const leer = () => { if(reloj && reloj.modo === 'elegir') fijarRueda(el, valorRueda(el.scrollTop, c.valores).k, false); };
-    // scrollend no existe en Safari viejo: el respaldo lee cuando el scroll se queda quieto.
-    el.addEventListener('scroll', () => { clearTimeout(espera); espera = setTimeout(leer, 120); }, { passive: true });
+    el.addEventListener('scroll', () => {
+      if(!cuadro) cuadro = requestAnimationFrame(() => { cuadro = 0; curvarRueda(el); });
+      // Un "tic" cada vez que pasa un número por el centro, como el selector del iPhone.
+      const k = valorRueda(el.scrollTop, c.valores).k;
+      if(k !== ultimaFila){ ultimaFila = k; tocarHaptico(); }
+      // scrollend no existe en Safari viejo: el respaldo lee cuando el scroll se queda quieto.
+      clearTimeout(espera); espera = setTimeout(leer, 120);
+    }, { passive: true });
     el.addEventListener('scrollend', leer);
   });
 }
@@ -7377,6 +7586,85 @@ function moverReloj(d){
   if(fuente === 'pomo') pintarPomo(); else pintarHabTimer();
 }
 document.addEventListener('visibilitychange', () => { if(!document.hidden && habTimer) ticHabTimer(); });
+
+/* ==========================================================================
+   LA BURBUJA DE LA BARRA DE SECCIONES (celular). Como la barra de vidrio de iOS: la
+   sección actual tiene una burbuja que se desliza con un resorte, y se puede arrastrar
+   con el dedo por la barra y soltarla sobre otra sección.
+   ========================================================================== */
+let tabInd = null, tabIndX = null, tabIndAnim = null, tabArr = null, tabSuprimirClic = false;
+const barraFlotante = () => matchMedia('(max-width: 899px)').matches;
+function montarIndicadorTabs(){
+  const nav = $('.tabs');
+  if(!nav || tabInd) return;
+  nav.insertAdjacentHTML('afterbegin', '<span class="tab-ind" aria-hidden="true"></span>');
+  tabInd = nav.querySelector('.tab-ind');
+  const act = nav.querySelector('.tab[aria-current="page"]');
+  if(act) moverIndicador(act, true);
+  addEventListener('resize', () => { const a = $('.tabs .tab[aria-current="page"]'); if(a) moverIndicador(a, true); });
+}
+function ponerIndicador(x){ tabIndX = x; if(tabInd) tabInd.style.transform = `translateX(${x.toFixed(1)}px)`; }
+function moverIndicador(tab, sinAnimar){
+  if(!tabInd || !barraFlotante()) return;
+  tabInd.style.width = tab.offsetWidth + 'px';
+  const x = tab.offsetLeft;
+  if(tabIndAnim){ tabIndAnim.detener(); tabIndAnim = null; }
+  if(sinAnimar || tabIndX === null || movReducido()){ ponerIndicador(x); return; }
+  tabIndAnim = resorte({ desde: tabIndX, hasta: x, respuesta: .35, amortiguacion: .85,
+    paso: ponerIndicador, fin: () => { tabIndAnim = null; } });
+}
+/* La pestaña más cercana a una posición de la burbuja (por el centro). Pura sobre la lista. */
+function tabMasCercana(x, tabs){
+  return tabs.reduce((mejor, t) => Math.abs(t.offsetLeft - x) < Math.abs(mejor.offsetLeft - x) ? t : mejor, tabs[0]);
+}
+document.addEventListener('pointerdown', e => {
+  if(e.button || !barraFlotante() || !tabInd) return;
+  const nav = e.target.closest && e.target.closest('.tabs');
+  if(!nav) return;
+  if(tabIndAnim){ tabIndAnim.detener(); tabIndAnim = null; }
+  tabArr = { id: e.pointerId, x0: e.clientX, base: tabIndX || 0, mov: false, hist: [{ t: e.timeStamp, x: e.clientX }] };
+});
+document.addEventListener('pointermove', e => {
+  if(!tabArr || e.pointerId !== tabArr.id) return;
+  const dx = e.clientX - tabArr.x0;
+  if(!tabArr.mov && Math.abs(dx) < 10) return;                    // hasta 10 px es un toque
+  if(!tabArr.mov){ tabArr.mov = true; $('.tabs').classList.add('apretada'); try{ $('.tabs').setPointerCapture(e.pointerId); }catch(_){} }
+  const tabs = $$('.tabs .tab'), min = tabs[0].offsetLeft, max = tabs[tabs.length - 1].offsetLeft;
+  let x = tabArr.base + dx;
+  if(x < min) x = min - gomita(min - x, 120);                     // en las puntas, resistencia
+  if(x > max) x = max + gomita(x - max, 120);
+  ponerIndicador(x);
+  tabArr.hist.push({ t: e.timeStamp, x: e.clientX });
+  if(tabArr.hist.length > 5) tabArr.hist.shift();
+});
+['pointerup', 'pointercancel'].forEach(tipo => document.addEventListener(tipo, e => {
+  if(!tabArr || e.pointerId !== tabArr.id) return;
+  const arr = tabArr; tabArr = null;
+  $('.tabs').classList.remove('apretada');
+  if(!arr.mov) return;                                             // un toque: lo resuelve el clic
+  tabSuprimirClic = true; setTimeout(() => { tabSuprimirClic = false; }, 400);
+  const a = arr.hist[0], b = arr.hist[arr.hist.length - 1];
+  const vel = tipo === 'pointercancel' ? 0 : (b.x - a.x) / Math.max(b.t - a.t, 1) * 1000;
+  const destino = tabMasCercana(tabIndX + proyectar(vel, .99), $$('.tabs .tab'));
+  if(destino.dataset.view !== view) go(destino.dataset.view); else moverIndicador(destino);
+}));
+// El clic que llega después de arrastrar la burbuja no tiene que cambiar otra vez de sección.
+document.addEventListener('click', e => {
+  if(tabSuprimirClic && e.target.closest && e.target.closest('.tabs')){ tabSuprimirClic = false; e.stopImmediatePropagation(); e.preventDefault(); }
+}, true);
+
+/* La barra de arriba muestra su borde solo cuando hay contenido pasando por debajo. */
+let topbarCuadro = 0;
+addEventListener('scroll', () => {
+  if(topbarCuadro) return;
+  topbarCuadro = requestAnimationFrame(() => {
+    topbarCuadro = 0;
+    const t = $('.topbar'); if(t) t.classList.toggle('scrolleado', scrollY > 4);
+  });
+}, { passive: true });
+/* iOS aplica :active (la respuesta al apoyar el dedo) solo si hay un touchstart escuchando. */
+document.addEventListener('touchstart', () => {}, { passive: true });
+
 
 
 document.addEventListener('visibilitychange', () => {
@@ -7684,6 +7972,7 @@ pedirProteccion();
 restaurarTimer();
 restaurarPomo();
 restaurarHabTimer();
+montarIndicadorTabs();
 iniciarNube();
 
 if(location.search.indexOf('test=1') !== -1){
