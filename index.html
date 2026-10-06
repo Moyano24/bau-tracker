@@ -316,8 +316,27 @@ input,select,textarea{
 }
 input:focus,select:focus,textarea:focus{border-color:var(--accent); outline:none}
 input[type=number]{appearance:textfield}
+/* Todos los campos de una línea miden lo mismo, sea texto, número, fecha o lista. En el
+   iPhone, Safari le da a la fecha un ancho mínimo y una altura propios (se salía de su
+   columna, era más alta que el resto y centraba el texto): se le sacan. :where() deja la
+   regla sin peso, así los casos especiales (casillas, el color libre) siguen mandando. */
+:where(input:not([type=checkbox], [type=radio], [type=color], [type=range]), select){height:48px; line-height:1.25}
+input[type=date], input[type=time], input[type=datetime-local]{-webkit-appearance:none; appearance:none; min-width:0; display:block; text-align:left}
+input::-webkit-date-and-time-value{text-align:left; margin:0}
+input::-webkit-datetime-edit{padding:0}
 .field{margin-bottom:var(--s3)}
-.fields{display:grid; gap:var(--s3); grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+/* align-items:end: si la etiqueta de un campo ocupa dos renglones, las cajas igual quedan
+   a la misma altura. min-width:0 deja que cada columna se achique de verdad. */
+.fields{display:grid; gap:var(--s3); grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); align-items:end}
+.fields > *{min-width:0}
+/* Mejor todavía: cada campo usa tres renglones compartidos (etiqueta, caja, ayuda). Así las
+   cajas quedan alineadas aunque una etiqueta ocupe dos renglones o un campo tenga una
+   ayuda debajo (como el WhatsApp). */
+@supports (grid-template-rows: subgrid){
+  .fields{row-gap:0; align-items:stretch}
+  .fields > .field{display:grid; grid-row:span 3; grid-template-rows:subgrid; row-gap:0; align-content:start}
+  .fields > .field > label{align-self:end}
+}
 
 .pill{
   display:inline-flex; align-items:center; gap:var(--s1);
@@ -3602,7 +3621,7 @@ function viewPersonal(){
         ${p.sub.map(s => {
           const dato = s.k === 'estudio'
             ? fmtNum(p.e.hours, 1) + ' h acumuladas'
-            : p.f.done + ' proyecto(s) completado(s)';
+            : p.f.done + (p.f.done === 1 ? ' proyecto completado' : ' proyectos completados');
           return `<div class="mbtn${s.k === p.flojo.k ? ' sel' : ''}">
             <div class="row between"><b>${esc(s.label)}</b>${gemHTML(s.r.tier)}</div>
             <div class="dim">${esc(s.r.tier.n)} · ${esc(dato)}</div>
