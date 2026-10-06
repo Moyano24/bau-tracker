@@ -1171,6 +1171,17 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
   .llama .cuerpo, .llama .llama-ico, .hab.rellena > .rell{animation:none !important}
   .chispa{display:none}
 }
+/* ---- Tamaño mínimo de lo que se toca: 44 puntos (la regla de Apple) ----
+   Va al final a propósito: gana sobre las medidas sueltas de más arriba (botones chicos de
+   32 a 41 px). Quedan afuera los botones de las píldoras flotantes de los temporizadores
+   (agrandarlos movería el apilado de las tres) y la grilla de Constancia (muestra datos). */
+:root{--toque:44px}
+.btn, .btn.sm, .seg button, .filtro-chip, .cat-chip, .reloj-chip, .rir button, .tira-titulo .btn, .nav-per .btn,
+.sel-cab .btn, .acciones-cli .btn, .prog-rango .btn, .cat-borrar, .ico-btn, .imp-incluir{min-height:var(--toque)}
+.btn.sm, .nav-per .btn, .tira-titulo .btn, .cat-borrar{min-width:var(--toque)}
+.chk.sm, .saltar{width:var(--toque); height:var(--toque)}
+.hab-nom, button.hab-abrir{min-height:var(--toque)}
+details.pasados summary, .icono-grupo > summary{min-height:var(--toque)}
 </style>
 </head>
 <body>
@@ -4539,8 +4550,10 @@ function radarHTML(g){
   const dots = MUSCLE_IDS.map((id,i) => {
     const [x,y] = pt(i, f(id));
     const d = g.m[id];
+    // El aro transparente (stroke) agranda el área que responde al toque a unos 44 px sin
+    // cambiar cómo se ve el punto.
     return `<circle class="radar-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4"
-      fill="${d.rank.tier.c}" data-act="open-muscle" data-mus="${id}"
+      fill="${d.rank.tier.c}" stroke="transparent" stroke-width="24" data-act="open-muscle" data-mus="${id}"
       data-tipfor="radar-tip" data-tiptext="${esc(MUSCLES[id].label + ' · ' + d.rank.tier.n + ' · ' + fmtNum(d.pts) + ' pts · entrenado ' + heatLabel(d.last))}"
       role="button" tabindex="0" aria-label="${esc(MUSCLES[id].label)}"/>`;
   }).join('');
