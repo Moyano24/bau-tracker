@@ -37,6 +37,10 @@
 :root{
   /* --- CLARO: papel. Es el tema base; el oscuro solo redefine tokens. --- */
   --bg:#F4F2ED;
+  /* Curvas de movimiento: ease-out fuerte para entrar y salir; la de iOS para lo que sube
+     desde abajo o baja desde arriba. */
+  --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer:cubic-bezier(0.32, 0.72, 0, 1);
   /* Vidrio ("liquid glass") SOLO para lo que flota sobre el contenido: las barras, las
      píldoras de los temporizadores, el aviso y el reloj. Las tarjetas siguen planas:
      ahí se leen datos y el fondo traslúcido los ensuciaría. */
@@ -268,9 +272,9 @@ button{font-family:inherit}
      las que obligan al navegador a rehacer el layout. */
   transition:background-color .15s ease, border-color .15s ease, transform .09s ease;
 }
-.btn:hover{border-color:var(--line-fuerte)}
+@media (hover:hover) and (pointer:fine){ .btn:hover{border-color:var(--line-fuerte)} }
 .btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-text)}
-.btn.primary:hover{filter:brightness(1.08)}
+@media (hover:hover) and (pointer:fine){ .btn.primary:hover{filter:brightness(1.08)} }
 .btn.sm{padding:var(--s1) var(--s2); font-size:var(--t-xs)}
 .btn.danger{color:var(--bad)}
 /* La acción destructiva de un diálogo de confirmación: rellena, no solo teñida. */
@@ -300,7 +304,7 @@ html{-webkit-tap-highlight-color:transparent}
    zoom). Acá el doble toque no significa nada, así que ese retardo es puro
    impuesto sobre cada toque. */
 button,.tab,.hcell,.mz,[data-act]{touch-action:manipulation}
-.btn.danger:hover{border-color:var(--bad)}
+@media (hover:hover) and (pointer:fine){ .btn.danger:hover{border-color:var(--bad)} }
 .btn:disabled{opacity:.4; cursor:not-allowed}
 .btn[aria-pressed="true"]{background:var(--line-fuerte); color:var(--bg); border-color:var(--line-fuerte)}
 
@@ -358,7 +362,7 @@ td{padding:var(--s2); border-top:1px solid var(--line)}
 .mz.r2{opacity:.68}
 .mz.r3{opacity:.85}
 .mz.r4{opacity:1}
-.mz:hover{stroke:var(--line-fuerte); stroke-width:1.4; opacity:1}
+@media (hover:hover) and (pointer:fine){ .mz:hover{stroke:var(--line-fuerte); stroke-width:1.4; opacity:1} }
 .mz.sel{stroke:var(--line-fuerte); stroke-width:1.8; opacity:1}
 .mz:focus-visible{outline:none; stroke:var(--accent); stroke-width:2.4}
 /* La escalera de rangos: nueve franjas planas, no un degradado. Se ven los
@@ -520,7 +524,7 @@ td{padding:var(--s2); border-top:1px solid var(--line)}
   border:1px solid var(--line); background:var(--surface); color:var(--text);
   cursor:pointer; font-size:var(--t-xs);
 }
-.mbtn:hover{border-color:var(--accent)}
+@media (hover:hover) and (pointer:fine){ .mbtn:hover{border-color:var(--accent)} }
 .mbtn.sel{border-color:var(--accent); background:var(--surface-2)}
 
 /* ---- Heatmap de hábitos ---- */
@@ -750,7 +754,7 @@ button.hab-abrir{display:block; width:100%; max-width:100%; padding:0; backgroun
 .hab-panel{background:var(--tinta); color:var(--sobre); border-radius:var(--r3); padding:var(--s4); margin-top:var(--s3)}
 .hab-panel h3{font-size:var(--t-md); margin-bottom:var(--s2)}
 .hab-panel .tip{color:var(--sobre); min-height:2.4em}
-.hab-panel .hit:hover{fill:color-mix(in srgb, var(--sobre) 18%, transparent)}
+@media (hover:hover) and (pointer:fine){ .hab-panel .hit:hover{fill:color-mix(in srgb, var(--sobre) 18%, transparent)} }
 .hab .seg{background:color-mix(in srgb, var(--sobre) 18%, transparent); margin-top:var(--s3)}
 .hab .seg button{color:var(--sobre)}
 .hab .seg button[aria-pressed="true"]{background:var(--sobre); color:var(--tinta)}
@@ -995,6 +999,22 @@ body.reloj-abierto{overflow:hidden}
   .topbar, .tabs, .reloj, .reloj-caja, .timer-pill, #toast{-webkit-backdrop-filter:none; backdrop-filter:none}
 }
 
+/* ---- Entradas y salidas ----
+   Todo con transform/translate y opacidad. Con movimiento reducido la regla general deja
+   solo la opacidad (sin desplazamiento). */
+#toast{transition:opacity 220ms var(--ease-out), translate 220ms var(--ease-out)}
+@starting-style{ #toast{opacity:0; translate:0 12px} }
+#toast.saliendo{opacity:0; translate:0 8px; transition-duration:160ms}
+.timer-pill{transition:opacity 240ms var(--ease-drawer), translate 240ms var(--ease-drawer)}
+@starting-style{ .timer-pill{opacity:0; translate:0 -14px} }
+@keyframes entrar{from{opacity:0; translate:0 8px}}
+@keyframes subir{from{opacity:0; translate:0 16px}}
+#muscle-detail.entra{animation:entrar 200ms var(--ease-out)}
+.sel-barra.entra{animation:subir 220ms var(--ease-drawer)}
+/* El día completo: el anillo late una vez (es un festejo: una vez por día como mucho). */
+@keyframes festejo{0%{transform:scale(1)} 40%{transform:scale(1.18)} 100%{transform:scale(1)}}
+.tira-dia.festeja .tira-anillo{animation:festejo 420ms var(--ease-out)}
+
 /* ---- Pomodoro ---- */
 .pomo-reloj{font-family:var(--font-display); font-size:clamp(56px, 16vw, 88px); font-weight:700; line-height:1; letter-spacing:-.01em; text-align:center; margin-top:var(--s3)}
 .pomo-fase{text-align:center; font-weight:700}
@@ -1072,7 +1092,7 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
 
 
 .card{transition:border-color .2s, transform .2s}
-.card:hover{border-color:var(--line-fuerte)}
+@media (hover:hover) and (pointer:fine){ .card:hover{border-color:var(--line-fuerte)} }
 
 .hero{display:grid; gap:var(--s5); grid-template-columns:1fr}
 @media (min-width:860px){ .hero{grid-template-columns:1.25fr 1fr; align-items:start} }
@@ -1082,7 +1102,7 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
 .bloque{display:flex; flex-direction:column; align-items:flex-start; gap:var(--s1);
   padding:var(--s4) var(--s3) var(--s3); border:1px solid var(--line); border-radius:var(--r2); background:var(--surface); color:var(--text);
   cursor:pointer; font:inherit; text-align:left; transition:background .15s}
-.bloque:hover{background:var(--surface-2)}
+@media (hover:hover) and (pointer:fine){ .bloque:hover{background:var(--surface-2)} }
 .bloque-top{display:flex; align-items:center; gap:var(--s2)}
 .bloque-sec{font-size:var(--t-xs); font-weight:700; letter-spacing:.08em; text-transform:uppercase}
 .bloque .cifra{font-family:var(--font-display); font-size:clamp(56px,9vw,86px); font-weight:700;
@@ -1093,15 +1113,15 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
 .chips{display:flex; flex-wrap:wrap; gap:var(--s2)}
 .chip{display:flex; align-items:center; gap:var(--s2); padding:var(--s2) var(--s3);
   border:1px solid var(--line); border-radius:99px; background:var(--surface-2);
-  color:var(--text); font-size:var(--t-xs); font-weight:600; cursor:pointer; transition:.15s;
+  color:var(--text); font-size:var(--t-xs); font-weight:600; cursor:pointer; transition:border-color .15s ease, background-color .15s ease;
   font-family:inherit}
-.chip:hover{border-color:var(--accent)}
+@media (hover:hover) and (pointer:fine){ .chip:hover{border-color:var(--accent)} }
 
 .viz{width:100%; height:auto; display:block; overflow:visible}
 .radar-dot{cursor:pointer; transition:r .15s}
-.radar-dot:hover{r:5.5}
+@media (hover:hover) and (pointer:fine){ .radar-dot:hover{r:5.5} }
 .hit{fill:transparent; cursor:pointer}
-.hit:hover{fill:rgba(79,124,255,.12)}
+@media (hover:hover) and (pointer:fine){ .hit:hover{fill:color-mix(in srgb, var(--accent) 12%, transparent)} }
 .hit:focus-visible{fill:rgba(79,124,255,.18); outline:none}
 .tip{min-height:32px; font-size:var(--t-xs); color:var(--muted); margin-top:var(--s2)}
 .hcell.act{cursor:default}
@@ -1860,7 +1880,8 @@ function esc(s){
   ));
 }
 
-let toastTimer, toastAccion = null;
+let toastTimer, toastAccion = null, toastSalida = 0;
+const TOAST_SALIDA_MS = 170;
 /* El aviso. Con `{accion:{texto, fn}}` lleva un botón (ej. "Deshacer") y dura
    más, porque leer y decidir toma más que leer solamente. */
 function toast(msg, opc){
@@ -1874,10 +1895,14 @@ function toast(msg, opc){
     b.dataset.act = 'toast-accion'; b.textContent = accion.texto;
     el.appendChild(b);
   }
+  // Si estaba saliendo, vuelve: la transición se retoma desde donde está.
+  clearTimeout(toastSalida); el.classList.remove('saliendo');
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; toastAccion = null; },
-                          (opc && opc.ms) || (accion ? 6000 : 2600));
+  toastTimer = setTimeout(() => {
+    el.classList.add('saliendo');                     // sale por donde entró, y después se esconde
+    toastSalida = setTimeout(() => { el.hidden = true; el.classList.remove('saliendo'); toastAccion = null; }, TOAST_SALIDA_MS);
+  }, (opc && opc.ms) || (accion ? 6000 : 2600));
 }
 
 /* Borrar con DESHACER, sin diálogos nativos.
@@ -3127,7 +3152,7 @@ function viewInicio(){
 
   // Últimas 5 actividades de cualquier sección, mezcladas y ordenadas por fecha.
   const feed = [
-    ...state.gym.sessions.map(s => ({date:s.date, txt:`Entrenaste · ${s.exercises.length} ejercicio(s)`, ico:'⛰'})),
+    ...state.gym.sessions.map(s => ({date:s.date, txt:`Entrenaste · ${s.exercises.length} ${s.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}`, ico:'⛰'})),
     ...state.estudio.entries.map(x => ({date:x.date, txt:`${x.subject} · ${x.minutes} min`, ico:'✎'})),
     ...state.freelance.items.map(i => ({date:i.updatedAt, txt:`${i.client} → ${STAGES.find(s=>s.id===i.stage).label}`, ico:'◑'})),
   ].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 5);
@@ -3148,7 +3173,7 @@ function viewInicio(){
         ${(() => { const ex = proximoExamen(), d = ex && diasHasta(ex.fecha);
           return ex && d <= 21 ? `<span class="pill" data-examen-chip>📅 ${TIPOS_EXAMEN[ex.tipo]} de ${esc(ex.materia)} ${cuandoExamen(d)}</span>` : ''; })()}
           </div>
-          <div class="xs dim mt5">Tocá un bloque del tablero para ver cuánto te falta; el click te lleva a esa sección.</div>
+          <div class="xs dim mt5">Tocá un bloque para ver cuánto te falta e ir a esa sección.</div>
         </div>
       </div>
     </div>
@@ -3167,7 +3192,7 @@ function viewInicio(){
           <h2>Últimas 12 semanas</h2>
         </div>
         <div class="mt3">${trendHTML(g)}</div>
-        <div class="tip" id="trend-tip">Pasá por una semana para ver sus números.</div>
+        <div class="tip" id="trend-tip">Tocá una semana para ver sus números.</div>
       </div>
     </div>
 
@@ -3319,7 +3344,7 @@ function viewGym(){
     </figure>`;
   };
 
-  const detalle = selMuscle ? muscleDetailHTML(selMuscle, g.m[selMuscle]) : '';
+  const detalle = selMuscle ? muscleDetailHTML(selMuscle, g.m[selMuscle]) : (musculoAnimado = null, '');
 
   const sesionesTodas = state.gym.sessions.slice().sort((a,b) => b.date.localeCompare(a.date));
   const sesiones = sesionesTodas.slice(0, limites.gym);
@@ -3414,8 +3439,11 @@ function muscleDetailHTML(mus, d){
     .filter(s => s.exercises.some(x => { const def = exDef(x.exId); return def && def.muscles[mus]; }))
     .sort((a,b) => b.date.localeCompare(a.date)).slice(0, 5);
   const r = d.rank;
+  // Entra con movimiento solo cuando se elige otro músculo: cualquier otro redibujado no.
+  const entra = mus !== musculoAnimado ? ' entra' : '';
+  musculoAnimado = mus;
   return `
-    <div class="card mt4" style="background:var(--surface-2)" id="muscle-detail" tabindex="-1">
+    <div class="card mt4${entra}" style="background:var(--surface-2)" id="muscle-detail" tabindex="-1">
       <div class="row between wrap">
         <div class="row">${gemHTML(r.tier, true)}
           <div><b style="font-size:var(--t-md)">${esc(MUSCLES[mus].label)}</b>
@@ -3793,6 +3821,15 @@ function vistaHoyHTML(list, dia = habDia || iso()){
    Siete días de la semana que contiene al día elegido, cada uno con un anillo: la
    fracción de los hábitos que TOCABAN ese día que se cumplieron. Tocar uno cambia el
    día de la lista; los de más adelante de hoy no se pueden elegir. */
+/* ¿Ese día se cumplieron todos los hábitos que tocaban? */
+function diaCompleto(d){ const a = avanceDia(d); return a.programados > 0 && a.hechos === a.programados; }
+/* Un "pop" en el anillo del día, una vez, y un tic donde se pueda. */
+function festejarDia(d){
+  const b = $(`.tira-dia[data-day="${d}"]`);
+  if(!b) return;
+  b.classList.remove('festeja'); void b.offsetWidth; b.classList.add('festeja');
+  tocarHaptico();
+}
 function tiraSemanalHTML(){
   const hoy = iso(), sel = habDia || hoy, dias = semanaDe(sel), esHoy = sel === hoy;
   const R = 16, C = 2 * Math.PI * R;
@@ -3820,7 +3857,7 @@ function tiraSemanalHTML(){
    habMulti es null (modo apagado) o un Set con los ids elegidos. Solo existe en Hoy, que
    es donde están las tarjetas. Entrar: el botón "Seleccionar" o mantener apretada una
    tarjeta (CLIC_LARGO_MS, se cancela si el dedo se mueve más de CLIC_LARGO_PX o se suelta). */
-let habMulti = null;
+let habMulti = null, selEntrando = false, musculoAnimado = null;
 let lp = null, suprimirClic = false;
 const CLIC_LARGO_MS = 500, CLIC_LARGO_PX = 8;
 
@@ -3841,6 +3878,7 @@ function podarSeleccion(){
 function entrarSeleccion(id){
   if(view !== 'habitos' || habVista !== 'hoy' || !state.habitos.list.length) return;
   habMulti = new Set(id ? [id] : []);
+  selEntrando = true;
   render();
 }
 function salirSeleccion(){ if(habMulti){ habMulti = null; render(); } }
@@ -3854,8 +3892,9 @@ function seleccionCabHTML(){
     </div>`;
 }
 function seleccionBarraHTML(){
-  const off = habMulti.size ? '' : 'disabled';
-  return `<div class="sel-barra" role="toolbar" aria-label="Acciones sobre los hábitos elegidos">
+  const off = habMulti.size ? '' : 'disabled', entra = selEntrando ? ' entra' : '';
+  selEntrando = false;                                    // la barra se redibuja con cada toque: sube una sola vez
+  return `<div class="sel-barra${entra}" role="toolbar" aria-label="Acciones sobre los hábitos elegidos">
       <button type="button" class="btn" data-act="sel-completar" ${off}>Completar</button>
       <button type="button" class="btn" data-act="sel-saltear" ${off}>Saltear</button>
       <button type="button" class="btn" data-act="sel-cats" ${off}>Categorías</button>
@@ -4026,7 +4065,7 @@ function dispararLP(){
   if(!lp) return;
   const id = lp.id; cancelarLP();
   if(habMulti || view !== 'habitos' || habVista !== 'hoy' || !habitoDe(id)) return;
-  habMulti = new Set([id]);
+  habMulti = new Set([id]); selEntrando = true;
   suprimirClic = true; setTimeout(() => { suprimirClic = false; }, 700);   // el toque que sigue al soltar no tiene que alternarla
   try{ if(navigator.vibrate) navigator.vibrate(15); }catch(_){}
   render();
@@ -5193,7 +5232,11 @@ document.addEventListener('click', e => {
 
   const btn = e.target.closest('[data-act]');
   if(!btn) return;
+  // Si esta acción completa el día que se está mirando en Hábitos, el anillo del día festeja.
+  const diaVigilado = view === 'habitos' && habVista === 'hoy' ? (habDia || iso()) : null;
+  const antes = diaVigilado && diaCompleto(diaVigilado);
   handleAction(btn.dataset.act, btn, e);
+  if(diaVigilado && !antes && view === 'habitos' && diaCompleto(diaVigilado)) festejarDia(diaVigilado);
 });
 
 // El mapa corporal también tiene que responder al teclado: los <g> son focusables
@@ -5803,7 +5846,7 @@ function handleAction(act, btn, ev){
     if(!ex) break;
     const p = act === 'prog-restaurar' ? Object.assign({}, PROG_DEF)
       : progresionValida({ min: Number($('#pg-min-' + i).value), max: Number($('#pg-max-' + i).value), inc: Number($('#pg-inc-' + i).value) });
-    if(!p){ toast('Revisá el rango: piso menor que el tope (1 a 50 reps) y un salto de 0,25 a 20 kg.'); break; }
+    if(!p){ toast('Revisá el rango: el piso tiene que ser menor que el tope (de 1 a 50 reps) y el salto, de 0,25 a 20 kg.'); break; }
     const prog = state.gym.progresion = state.gym.progresion || {};
     if(p.min === PROG_DEF.min && p.max === PROG_DEF.max && p.inc === PROG_DEF.inc) delete prog[ex.exId];
     else prog[ex.exId] = p;
@@ -6058,7 +6101,7 @@ function handleAction(act, btn, ev){
       const client = $('#fl-client').value.trim();
       if(!client){ toast('Falta el nombre del cliente.'); return false; }
       const tel = $('#fl-tel').value.trim(), prox = $('#fl-prox').value;
-      if(tel && !waNumero(tel)){ toast('Ese teléfono no alcanza: poné el código de área y el número (ej. 261 555 1234).'); return false; }
+      if(tel && !waNumero(tel)){ toast('Al teléfono le faltan números: poné el código de área y el número (ej. 261 555 1234).'); return false; }
       if(prox && !fechaValida(prox)){ toast('La fecha del próximo seguimiento no es válida.'); return false; }
       const data = {
         client, project: $('#fl-proj').value.trim(),
@@ -6407,7 +6450,7 @@ function handleAction(act, btn, ev){
     let roto = '';
     try{ roto = localStorage.getItem(CLAVE_ROTO) || ''; }catch(e){}
     if(roto) exportarTexto(roto, `bau-tracker-danado-${iso()}.json`);
-    else toast('No quedó nada apartado.');
+    else toast('No quedó nada apartado');
     break;
   }
   case 'cerrar-aviso':
@@ -6437,7 +6480,7 @@ function handleAction(act, btn, ev){
           }
           state = normalizarEstado(data);
           save(); render();
-          toast('Datos importados.');
+          toast('Datos importados');
         }catch(err){
           toast('El archivo no es un backup válido.');
           console.error(err);
@@ -6666,7 +6709,7 @@ async function leerFila(){
 
 /* Reemplaza lo de este aparato por lo de la nube (validado y normalizado, como un backup). */
 function aplicarFila(fila){
-  if(!fila || validarEstado(fila.datos).length){ toast('Lo que hay en la cuenta no tiene la forma esperada: no se tocó nada.'); return false; }
+  if(!fila || validarEstado(fila.datos).length){ toast('Los datos de la cuenta llegaron dañados: no se cambió nada en este aparato.'); return false; }
   state = normalizarEstado(JSON.parse(JSON.stringify(fila.datos)));
   guardarLocal();
   const s = syncInfo();
@@ -6773,7 +6816,7 @@ async function entrarCuenta(email, clave, crear){
   }catch(e){ r = { error: e }; }
   if(r.error){ toast(mensajeErrorCuenta(r.error), { ms: 6000 }); return false; }
   const d = r.data || {};
-  if(!d.session){ toast('Te mandamos un mail para confirmar la cuenta. Confirmala y después tocá "Entrar".', { ms: 9000 }); return false; }
+  if(!d.session){ toast('Revisá tu mail: hay que confirmar la cuenta y después tocar «Entrar».', { ms: 9000 }); return false; }
   try{ await despuesDeEntrar(d.user || d.session.user); }
   catch(e){ syncEstado = 'error'; toast(mensajeErrorCuenta(e)); }
   render();
@@ -7798,9 +7841,9 @@ async function exportarTexto(texto, filename){
     ? await window.claude.use('downloads')
     : null;
   if(api){
-    try{ await api.save({ filename, data: texto }); toast('Backup guardado.'); return true; }
+    try{ await api.save({ filename, data: texto }); toast('Backup guardado'); return true; }
     catch(err){
-      toast(err && err.code === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar el backup.');
+      toast(err && err.code === 'declined' ? 'Guardado cancelado' : 'No se pudo guardar el backup.');
       return false;
     }
   }
@@ -7808,9 +7851,9 @@ async function exportarTexto(texto, filename){
   // abre la hoja de Compartir (Guardar en Archivos, WhatsApp, Drive…). En la compu, descarga.
   const archivo = typeof File === 'function' ? new File([texto], filename, { type: 'application/json' }) : null;
   if(archivo && navigator.canShare && navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && navigator.canShare({ files: [archivo] })){
-    try{ await navigator.share({ files: [archivo], title: filename }); toast('Backup listo.'); return true; }
+    try{ await navigator.share({ files: [archivo], title: filename }); toast('Backup listo'); return true; }
     catch(err){
-      if(err && err.name === 'AbortError'){ toast('Guardado cancelado.'); return false; }
+      if(err && err.name === 'AbortError'){ toast('Guardado cancelado'); return false; }
       // si compartir falla por otra razón, se intenta la descarga común
     }
   }
