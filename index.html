@@ -7004,7 +7004,9 @@ function cuentaHTML(){
    guarda solo su huella. La clave se muestra UNA vez, al crearla: no se guarda en el aparato.
    Lo anotado aparece solo al volver a la app, porque bajar() trae la versión nueva. */
 let atajoClave = null, atajoBorrar = false;
-const urlAtajo = () => configSupabase().url.replace(/\/$/, '') + '/rest/v1/rpc/anotar_atajo';
+/* La clave pública va en la dirección: así el atajo no lleva encabezados (pegarlos a mano en
+   Atajos daba "La conexión de red se perdió" en el iPhone). */
+const urlAtajo = () => configSupabase().url.replace(/\/$/, '') + '/rest/v1/rpc/anotar_atajo?apikey=' + encodeURIComponent(configSupabase().anon);
 const zonaAparato = () => { try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || null; }catch(e){ return null; } };
 function datoAtajoHTML(rotulo, valor, id){
   return `<div class="atajo-dato"><span class="xs muted">${rotulo}</span><code id="${id}">${esc(valor)}</code>
@@ -7022,16 +7024,14 @@ function atajosHTML(){
       <button type="button" class="btn danger" data-act="atajo-borrar">${atajoBorrar ? 'Tocá otra vez para borrarla' : 'Borrar clave'}</button>
     </div>
     <p class="xs muted mt3">Crear una clave nueva o borrarla hace que dejen de andar los atajos que usaban la anterior.</p></div>`;
-  const anon = configSupabase().anon, nombres = state.habitos.list.map(hb => `<b>${esc(hb.name)}</b>`).join(' · ');
+  const nombres = state.habitos.list.map(hb => `<b>${esc(hb.name)}</b>`).join(' · ');
   return abre + `
     <p class="mt3"><b>Copiá tu clave ahora: no se vuelve a mostrar.</b> Si la perdés, creá otra.</p>
     ${datoAtajoHTML('Tu clave (p_clave)', atajoClave, 'atajo-clave')}
     ${datoAtajoHTML('Dirección (URL)', urlAtajo(), 'atajo-url')}
-    ${datoAtajoHTML('Encabezado apikey', anon, 'atajo-apikey')}
-    ${datoAtajoHTML('Encabezado Authorization', 'Bearer ' + anon, 'atajo-auth')}
     <ol class="atajo-pasos xs">
       <li>En la app Atajos, tocá <b>+</b> y agregá la acción <b>Obtener contenido de URL</b>. Pegá la dirección.</li>
-      <li>Tocá la flechita: <b>Método</b> POST. En <b>Encabezados</b> agregá <b>apikey</b> y <b>Authorization</b> con lo de arriba.</li>
+      <li>Tocá la flechita y elegí <b>Método</b> POST. No hace falta agregar encabezados.</li>
       <li>En <b>Cuerpo de la solicitud</b> elegí JSON y agregá dos campos de texto: <b>p_clave</b> (tu clave) y <b>p_habito</b> (el nombre del hábito). Para sumar otra cantidad que la del «+», agregá <b>p_cantidad</b> como número.</li>
       <li>Agregá la acción <b>Mostrar resultado</b>: así Siri te lee cómo quedó, por ejemplo «Agua: 3 de 8 vasos».</li>
       <li>Ponele de nombre la frase que vas a decir, por ejemplo «Tomé agua». Para otro hábito, duplicalo y cambiá solo <b>p_habito</b>.</li>
