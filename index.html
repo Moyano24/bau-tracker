@@ -361,6 +361,29 @@ input::-webkit-datetime-edit{padding:0}
   background:var(--surface); border:1px solid var(--line);
   border-radius:var(--r1); padding:var(--s3);
 }
+/* Filas que se deslizan (como en iOS): hacia la izquierda aparecen Editar y Borrar; hasta el
+   fondo, borra (con Deshacer). Solo en pantallas táctiles: con mouse quedan los botones. */
+.item.desliza{position:relative; overflow:hidden; padding:0}
+.desliza-cuerpo{position:relative; z-index:1; padding:var(--s3); background:inherit; border-radius:inherit; touch-action:pan-y}
+.desliza-acciones{position:absolute; top:0; right:0; bottom:0; display:flex}
+.desliza-btn{width:76px; border:0; border-radius:0; font:inherit; font-size:var(--t-xs); font-weight:600;
+  color:var(--bg); background:var(--dim); cursor:pointer}
+.desliza-btn.peligro{color:#fff; background:var(--bad); transition:width .2s var(--ease-out)}
+/* Pasado el punto de "borrar", el rojo se estira bajo todo el dedo, como en Mail. */
+.desliza.pasa-borrar .desliza-btn.peligro{width:100vw}
+/* Con la fila quieta las acciones no asoman por las esquinas redondeadas (siguen enfocables). */
+.desliza:not(.movida) .desliza-acciones{opacity:0}
+@media (hover:hover) and (pointer:fine){ .desliza-acciones{display:none} }
+@media (hover:none), (pointer:coarse){ .desliza .solo-puntero{display:none} }
+/* Mantener para confirmar: el color avanza mientras el dedo sigue apretado; si se suelta antes, vuelve. */
+.mantener{position:relative; overflow:hidden; isolation:isolate; -webkit-user-select:none; user-select:none;
+  -webkit-touch-callout:none; touch-action:manipulation}
+.mantener-relleno{position:absolute; inset:0; z-index:-1; pointer-events:none; background:currentColor; opacity:.18;
+  clip-path:inset(0 100% 0 0); transition:clip-path .2s var(--ease-out)}
+.mantener.cargando .mantener-relleno{clip-path:inset(0 0 0 0); transition:clip-path var(--mantener-ms, 1500ms) linear}
+/* La tendencia del 1RM: una línea chiquita al lado del ejercicio. */
+.spark{display:inline-block; vertical-align:middle; color:var(--dim); flex:none}
+.spark.sube{color:var(--good)}
 
 table{width:100%; border-collapse:collapse; font-size:var(--t-sm)}
 th{text-align:left; font-size:var(--t-xs); color:var(--muted); font-weight:600; padding:var(--s2) var(--s2)}
@@ -2616,6 +2639,29 @@ function mejorE1RM(exId, sets){
 /* ¿Esta sesión superó todo lo que hiciste antes en ese ejercicio? La primera vez
    NO cuenta: no hay con qué compararla. "Antes" = fecha anterior, o misma fecha
    y cargada antes (una sesión sin guardar cuenta como la última). */
+/* El mejor 1RM estimado de cada sesión con ese ejercicio, de la más vieja a la más nueva
+   (las últimas `n`), sin contar la sesión `sinId` (la que se está editando). */
+function serieE1RM(exId, n = 8, sinId = null){
+  return state.gym.sessions.filter(s => s.id !== sinId).slice().sort((a, b) => a.date.localeCompare(b.date))
+    .map(s => { const e = s.exercises.find(x => x.exId === exId); return e ? mejorE1RM(exId, e.sets) : 0; })
+    .filter(v => v > 0).slice(-n);
+}
+/* Una línea chiquita con los valores, el último marcado con un punto. Con menos de dos no dice nada. */
+function sparklineHTML(vals, etiqueta, ancho = 64, alto = 20){
+  if(vals.length < 2) return '';
+  const lo = Math.min(...vals), hi = Math.max(...vals), m = 2.5;
+  const pts = vals.map((v, i) => [m + i * (ancho - 2 * m) / (vals.length - 1),
+                                  hi === lo ? alto / 2 : alto - m - (v - lo) * (alto - 2 * m) / (hi - lo)]);
+  const [ux, uy] = pts[pts.length - 1];
+  return `<svg class="spark${vals[vals.length - 1] > vals[0] ? ' sube' : ''}" viewBox="0 0 ${ancho} ${alto}" width="${ancho}" height="${alto}" role="img" aria-label="${esc(etiqueta)}"><title>${esc(etiqueta)}</title>
+    <polyline points="${pts.map(([x, y]) => x.toFixed(1) + ',' + y.toFixed(1)).join(' ')}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${ux.toFixed(1)}" cy="${uy.toFixed(1)}" r="2.2" fill="currentColor"/></svg>`;
+}
+function tendenciaEjHTML(exId, sinId = null){
+  const v = serieE1RM(exId, 8, sinId);
+  return v.length < 2 ? '' : sparklineHTML(v, `1RM estimado: de ${fmtKg(v[0])} a ${fmtKg(v[v.length - 1])} kg en las últimas ${v.length} sesiones`);
+}
+
 function esRecord(sesion, ex){
   const todas = state.gym.sessions;
   const pos = todas.findIndex(s => s.id === sesion.id);
@@ -3480,10 +3526,13 @@ function viewGym(){
         const nombres = s.exercises.map(x => esc(x.name)).join(', ') || '—';
         const series = s.exercises.reduce((a,x) => a + x.sets.length, 0);
         const recs = s.exercises.filter(x => esRecord(s, x)).map(x => esc(x.name));
-        return `<div class="item">
+        return `<div class="item desliza">${accionesDeslizaHTML([
+            { act: 'edit-session', id: s.id, texto: 'Editar', aria: `Editar el entrenamiento del ${fmtDate(s.date)}` },
+            { act: 'del-session', id: s.id, texto: 'Borrar', peligro: true, aria: `Borrar el entrenamiento del ${fmtDate(s.date)}` }])}
+          <div class="desliza-cuerpo">
           <div class="row between wrap">
             <b>${fmtDate(s.date)}</b>
-            <div class="row">
+            <div class="row solo-puntero">
               <button class="btn sm" data-act="edit-session" data-id="${s.id}">Editar</button>
               <button class="btn sm danger" data-act="del-session" data-id="${s.id}">Borrar</button>
             </div>
@@ -3491,7 +3540,7 @@ function viewGym(){
           <div class="xs muted" style="margin-top:var(--s1)">${series} series · ${nombres}</div>
           ${recs.length ? `<div class="xs" style="margin-top:var(--s1)"><span class="pill">Récord</span> ${recs.join(', ')}</div>` : ''}
           ${s.notes ? `<div class="xs dim" style="margin-top:var(--s1)">${esc(s.notes)}</div>` : ''}
-        </div>`;
+        </div></div>`;
       }).join('')}</div>${verMasHTML('gym', sesionesTodas.length, sesiones.length)}`
         : `<div class="mt3">${emptyHTML('Sin entrenamientos cargados.')}</div>`}
     </div>`;
@@ -3526,8 +3575,8 @@ function muscleDetailHTML(mus, d){
         <div><div class="xs dim">Tonelaje</div><b>${fmtNum(d.kg)} kg</b></div>
       </div>
       ${topEx.length ? `<div class="mt4"><div class="xs muted">De dónde vienen los puntos</div>
-        <div class="list mt3">${topEx.map(([n,p]) =>
-          `<div class="row between xs item">${esc(n)}<b>${fmtNum(p)} pts</b></div>`).join('')}</div></div>` : ''}
+        <div class="list mt3">${topEx.map(([n,p]) => { const def = allExercises().find(e => e.name === n);
+          return `<div class="row between xs item"><span class="row">${esc(n)} ${def ? tendenciaEjHTML(def.id) : ''}</span><b>${fmtNum(p)} pts</b></div>`; }).join('')}</div></div>` : ''}
       ${sesiones.length ? `<div class="mt4"><div class="xs muted">Últimas sesiones que lo tocaron</div>
         <div class="row wrap mt3">${sesiones.map(s => `<span class="pill">${fmtDate(s.date)}</span>`).join('')}</div></div>` : ''}
     </div>`;
@@ -4482,9 +4531,10 @@ function viewAjustes(){
         Llena la app con ~3 semanas de actividad para ver cómo se comportan los rangos,
         el mapa corporal y los heatmaps. Reemplaza todo lo que tengas cargado.
       </p>
+      <p class="xs muted mt3">Para confirmar, mantené apretado el botón hasta que se llene. Vas a tener unos segundos para deshacerlo; si querés conservar lo que tenés, exportalo antes.</p>
       <div class="row wrap mt3">
-        <button class="btn" data-act="seed">Cargar datos de ejemplo</button>
-        <button class="btn danger" data-act="wipe">Borrar todo</button>
+        ${mantenerHTML('seed', 'Cargar datos de ejemplo', '')}
+        ${mantenerHTML('wipe', 'Borrar todo', ' danger')}
       </div>
     </div>
 
@@ -4998,6 +5048,150 @@ function gomita(exceso, alto, c = .55){
   return (exceso * alto * c) / (alto + c * Math.abs(exceso));
 }
 
+/* ---- Filas que se deslizan ----
+   Las acciones viven detrás de la fila (son botones de verdad: el lector de pantalla y el
+   teclado las alcanzan). El dedo arrastra la fila; al soltar decide con la velocidad
+   proyectada, como la hoja y el reloj. Hasta el fondo, borra: todo borrado tiene Deshacer. */
+function accionesDeslizaHTML(acciones){
+  return `<div class="desliza-acciones">${acciones.map(a =>
+    `<button type="button" class="desliza-btn${a.peligro ? ' peligro' : ''}" data-act="${a.act}" data-id="${esc(a.id)}" aria-label="${esc(a.aria || a.texto)}">${esc(a.texto)}</button>`).join('')}</div>`;
+}
+/* Dónde queda una fila soltada en `x` (negativo = a la izquierda) con velocidad `v` (px/s).
+   `acc` = ancho de las acciones, `ancho` = ancho de la fila. Pura. */
+function decidirSoltarFila(x, v, acc, ancho, conBorrar = true){
+  const destino = x + proyectar(v, .99);
+  if(conBorrar && (x <= -ancho * .6 || (destino <= -ancho * .75 && x <= -acc))) return 'borrar';
+  return destino <= -acc / 2 ? 'abrir' : 'cerrar';
+}
+let filaAbierta = null, arrastreFila = null, tragarClick = null;
+function moverFila(f, x){
+  f.dataset.x = x;
+  f.classList.toggle('movida', x !== 0);
+  f.querySelector('.desliza-cuerpo').style.transform = x ? `translateX(${x.toFixed(1)}px)` : '';
+}
+function animarFila(f, hasta, v0 = 0, fin){
+  if(f._anim) f._anim.detener();
+  const desde = Number(f.dataset.x) || 0;
+  if(movReducido() || desde === hasta){ moverFila(f, hasta); if(fin) fin(); return; }
+  f._anim = resorte({ desde, hasta, v0, respuesta: .35, paso: x => moverFila(f, x), fin });
+}
+function cerrarFila(f){
+  if(!f) return;
+  if(f.isConnected) animarFila(f, 0);
+  f.classList.remove('abierta', 'pasa-borrar');
+  if(filaAbierta === f) filaAbierta = null;
+}
+const anchoAcciones = f => f.querySelector('.desliza-acciones').offsetWidth || 76 * f.querySelectorAll('.desliza-btn').length;
+document.addEventListener('pointerdown', e => {
+  const f = e.target.closest && e.target.closest('.desliza');
+  if(filaAbierta && filaAbierta !== f) cerrarFila(filaAbierta);
+  if(!f || e.pointerType === 'mouse' || e.target.closest('.desliza-acciones')) return;
+  if(f._anim) f._anim.detener();
+  arrastreFila = { f, id: e.pointerId, x0: e.clientX, y0: e.clientY, base: Number(f.dataset.x) || 0, dir: null, x: 0, muestras: [[e.timeStamp, e.clientX]] };
+});
+document.addEventListener('pointermove', e => {
+  const a = arrastreFila;
+  if(!a || e.pointerId !== a.id) return;
+  const dx = e.clientX - a.x0, dy = e.clientY - a.y0;
+  if(!a.dir){
+    if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    a.dir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    if(a.dir === 'v'){ arrastreFila = null; return; }       // es un scroll: la fila no se mueve
+    a.f.classList.add('arrastrando');
+  }
+  let x = a.base + dx;
+  if(x > 0) x = gomita(x, 60);                               // a la derecha no hay nada: resiste
+  const ancho = a.f.offsetWidth || 320, borra = !!a.f.querySelector('.desliza-btn.peligro');
+  const pasa = borra && x <= -ancho * .6;
+  if(pasa !== a.f.classList.contains('pasa-borrar')){ a.f.classList.toggle('pasa-borrar', pasa); tocarHaptico(); }
+  a.x = x; moverFila(a.f, x);
+  a.muestras.push([e.timeStamp, e.clientX]);
+  while(a.muestras.length > 2 && e.timeStamp - a.muestras[0][0] > 100) a.muestras.shift();
+});
+function soltarFila(e){
+  const a = arrastreFila;
+  if(!a || e.pointerId !== a.id) return;
+  arrastreFila = null;
+  const f = a.f;
+  f.classList.remove('arrastrando');
+  if(!a.dir){                                                // un toque
+    if(a.base !== 0){ cerrarFila(f); tragarClick = f; setTimeout(() => { if(tragarClick === f) tragarClick = null; }, 400); }      // con la fila abierta, el toque la cierra
+    return;
+  }
+  tragarClick = f; setTimeout(() => { if(tragarClick === f) tragarClick = null; }, 400);
+  const [t0, x0] = a.muestras[0], [t1, x1] = a.muestras[a.muestras.length - 1];
+  const v = e.type === 'pointercancel' ? 0 : (t1 > t0 ? (x1 - x0) / (t1 - t0) * 1000 : 0);
+  const acc = anchoAcciones(f), ancho = f.offsetWidth || 320, borrar = f.querySelector('.desliza-btn.peligro');
+  const que = decidirSoltarFila(a.x, v, acc, ancho, !!borrar);
+  if(que === 'borrar'){ f.classList.add('pasa-borrar'); animarFila(f, -ancho, v, () => borrar.click()); }
+  else if(que === 'abrir'){ f.classList.remove('pasa-borrar'); f.classList.add('abierta'); filaAbierta = f; animarFila(f, -acc, v); }
+  else cerrarFila(f);
+}
+document.addEventListener('pointerup', soltarFila);
+document.addEventListener('pointercancel', soltarFila);
+// Después de arrastrar, el click que llega al soltar no abre nada adentro de la fila.
+document.addEventListener('click', e => {
+  if(tragarClick && e.target.closest && e.target.closest('.desliza') === tragarClick && !e.target.closest('.desliza-acciones')){
+    e.stopPropagation(); e.preventDefault();
+  }
+  tragarClick = null;
+}, true);
+// Con teclado (o VoiceOver), llegar a una acción abre la fila para que se vea.
+document.addEventListener('focusin', e => {
+  const b = e.target.closest && e.target.closest('.desliza-btn');
+  if(!b) return;
+  const f = b.closest('.desliza');
+  if(getComputedStyle(b.parentElement).display === 'none') return;
+  if(filaAbierta && filaAbierta !== f) cerrarFila(filaAbierta);
+  f.classList.add('abierta'); filaAbierta = f; animarFila(f, -anchoAcciones(f));
+});
+
+/* ---- Mantener para confirmar ----
+   Para lo que reemplaza TODO (cargar ejemplos, borrar todo): se mantiene apretado hasta que
+   el color llena el botón. Soltar antes no hace nada. Con teclado: mantener Espacio o Enter. */
+const MANTENER_MS = 1500;
+const MANTENER = {
+  seed: () => reemplazarEstado(seedData(), 'Datos de ejemplo cargados.'),
+  wipe: () => reemplazarEstado(emptyState(), 'Todo borrado.'),
+};
+function mantenerHTML(accion, texto, clase){
+  return `<button type="button" class="btn mantener${clase}" data-mantener="${accion}" style="--mantener-ms:${MANTENER_MS}ms"
+    aria-describedby="mantener-ayuda-${accion}"><span class="mantener-relleno" aria-hidden="true"></span>${esc(texto)}</button>
+    <span id="mantener-ayuda-${accion}" hidden>Mantené apretado para confirmar</span>`;
+}
+let mantenido = null;     // { btn, timer }
+function empezarMantener(btn){
+  if(mantenido) soltarMantener();
+  btn.classList.add('cargando');
+  mantenido = { btn, timer: setTimeout(() => {
+    const accion = MANTENER[btn.dataset.mantener];
+    mantenido = null; btn.classList.remove('cargando');
+    tocarHaptico();
+    if(accion) accion();
+  }, MANTENER_MS) };
+}
+function soltarMantener(avisar){
+  if(!mantenido) return;
+  clearTimeout(mantenido.timer); mantenido.btn.classList.remove('cargando'); mantenido = null;
+  if(avisar) toast('Mantené apretado hasta que se llene el botón.');
+}
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest && e.target.closest('[data-mantener]');
+  if(!b || e.button > 0) return;
+  empezarMantener(b);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(t => document.addEventListener(t, e => {
+  if(mantenido && (t !== 'pointerleave' || e.target === mantenido.btn)) soltarMantener(t === 'pointerup');
+}, true));
+document.addEventListener('keydown', e => {
+  const b = e.target.closest && e.target.closest('[data-mantener]');
+  if(b && (e.key === ' ' || e.key === 'Enter')){ e.preventDefault(); if(!e.repeat) empezarMantener(b); }
+});
+document.addEventListener('keyup', e => {
+  if(mantenido && (e.key === ' ' || e.key === 'Enter')) soltarMantener(true);
+});
+document.addEventListener('contextmenu', e => { if(e.target.closest && e.target.closest('[data-mantener], .desliza')) e.preventDefault(); });
+
 /* ---- La hoja ----
    En teléfono el diálogo es una hoja que sube desde abajo y se puede agarrar y
    tirar para abajo en cualquier momento, incluso mientras está entrando. En
@@ -5194,7 +5388,7 @@ function ultimaVezHTML(ex, i){
   const abierto = progAbierto === ex.exId;
   return `<div class="ultima" data-ei="${i}">
       <div class="row between wrap">
-        <span class="xs muted">Última vez · ${fechaCorta(uv.date)} · ${esc(resumenSeries(uv.sets))}</span>
+        <span class="xs muted">Última vez · ${fechaCorta(uv.date)} · ${esc(resumenSeries(uv.sets))} ${tendenciaEjHTML(ex.exId, draft.id)}</span>
         ${vacias ? `<button class="btn sm" data-act="repetir-ultima" data-ei="${i}">Repetir</button>` : ''}
       </div>
       <div class="sugerencia">
@@ -6597,21 +6791,7 @@ function handleAction(act, btn, ev){
     input.click();
     break;
   }
-  case 'seed':
-    openModal('Cargar datos de ejemplo', `
-      <p>Esto <b>reemplaza todos tus datos</b> por datos de ejemplo.</p>
-      <p class="xs muted mt3">Vas a tener unos segundos para deshacerlo, pero si querés
-         conservar lo que tenés, exportalo antes.</p>
-      <div class="row wrap mt3"><button class="btn sm" data-act="export">Exportar mis datos primero</button></div>`,
-      () => reemplazarEstado(seedData(), 'Datos de ejemplo cargados.'), 'Cargar ejemplos', true);
-    break;
-  case 'wipe':
-    openModal('Borrar todo', `
-      <p>Se borran <b>todos</b> tus entrenamientos, estudio, clientes y hábitos.</p>
-      <p class="xs muted mt3">Vas a tener unos segundos para deshacerlo. Pasado ese tiempo
-         no se puede recuperar, salvo desde un backup.</p>
-      <div class="row wrap mt3"><button class="btn sm" data-act="export">Exportar mis datos primero</button></div>`,
-      () => reemplazarEstado(emptyState(), 'Todo borrado.'), 'Borrar todo', true);
+  /* "Cargar datos de ejemplo" y "Borrar todo" se confirman manteniendo apretado: ver MANTENER. */
     break;
   }
 }
@@ -7182,17 +7362,20 @@ function examenesHTML(){
   const fila = (x, viejo) => {
     const a = avanceExamen(x), tipo = TIPOS_EXAMEN[x.tipo];
     const p = x.horas ? Math.min(a.hechas / x.horas, 1) : 0, ps = x.horas && a.metaSemana ? Math.min(a.semanaHechas / a.metaSemana, 1) : 1;
-    return `<div class="item examen${!viejo && a.dias <= 7 ? ' cerca' : ''}" data-examen="${esc(x.id)}">
+    return `<div class="item desliza examen${!viejo && a.dias <= 7 ? ' cerca' : ''}" data-examen="${esc(x.id)}">${accionesDeslizaHTML([
+        ...(viejo ? [] : [{ act: 'edit-examen', id: x.id, texto: 'Editar', aria: `Editar el examen de ${x.materia}` }]),
+        { act: 'del-examen', id: x.id, texto: 'Borrar', peligro: true, aria: `Borrar el examen de ${x.materia}` }])}
+      <div class="desliza-cuerpo">
       <div class="row between wrap"><b>${esc(x.materia)} · ${tipo}</b><span class="pill">${cuandoExamen(a.dias)}</span></div>
       <div class="xs muted" style="margin-top:var(--s1)">${esc(fechaLarga(x.fecha))} · ${fmtH(a.hechas)}${x.horas ? ` de ${fmtH(x.horas)}` : ''} h estudiadas</div>
       ${x.horas ? `<div class="bar" role="img" aria-label="${fmtH(a.hechas)} de ${fmtH(x.horas)} horas"><i style="--p:${p.toFixed(3)}"></i></div>` : ''}
       ${!viejo && x.horas ? `<div class="examen-semana"><span>Esta semana: <b>${fmtH(a.semanaHechas)} de ${fmtH(Math.round(a.metaSemana * 10) / 10)} h</b></span>
         <span class="muted">${a.semanaHechas >= a.metaSemana ? '✓ al día' : `faltan ${fmtH(Math.round((a.metaSemana - a.semanaHechas) * 10) / 10)} h`}</span></div>` : ''}
-      <div class="row mt3">
+      <div class="row mt3 solo-puntero">
         ${viejo ? '' : `<button class="btn sm btn-vidrio" data-act="edit-examen" data-id="${esc(x.id)}">✎</button>`}
         <button class="btn sm danger btn-vidrio" data-act="del-examen" data-id="${esc(x.id)}" aria-label="Borrar el examen">✕</button>
       </div>
-    </div>`;
+    </div></div>`;
   };
   return `<div class="card mt4" id="examenes">
     <div class="row between wrap"><h2>Próximos exámenes</h2><button class="btn sm" data-act="new-examen">+ Examen</button></div>
