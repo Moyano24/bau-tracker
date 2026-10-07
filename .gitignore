@@ -2,3 +2,6 @@
 .DS_Store
 Thumbs.db
 desktop.ini
+# por si alguna vez se copia uno por error: las claves nunca van al repo
+.env
+.env.*
