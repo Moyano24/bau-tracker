@@ -1,0 +1,4 @@
+# archivos que deja el sistema; el resto de esta carpeta lo genera tools/build_web.py
+.DS_Store
+Thumbs.db
+desktop.ini
