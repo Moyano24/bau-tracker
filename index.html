@@ -61,6 +61,9 @@
   --dim:#6E6A62;
   --accent:#1F6E96;
   --accent-text:#FFFFFF;
+  /* Los colores que se pueden elegir para la app (Ajustes → Apariencia). Medidos: con su texto
+     llegan a 4,5:1 o más, en claro y en oscuro. */
+  --ac-celeste:#1F6E96; --ac-azul:#2C56C9; --ac-naranja:#B0520E; --ac-morado:#6A48C2; --ac-verde:#2F7A22; --ac-rojo:#BE2B4A;
   --good:#2B7A52;
   --warn:#B5841A;
   --bad:#B23A20;
@@ -106,6 +109,7 @@
     --line:#3A3D45; --line-fuerte:#F0EEE9;
     --text:#F0EEE9; --muted:#A9A69C; --dim:#938F86;
     --accent:#5BB3D9; --accent-text:#10171B;
+    --ac-celeste:#5BB3D9; --ac-azul:#86A6FF; --ac-naranja:#F2994E; --ac-morado:#B7A1F7; --ac-verde:#7FC86C; --ac-rojo:#F27D93;
     --good:#3FA070; --warn:#D9A62B; --bad:#E0674A;
     --lamina:#D8D4CB;
     --rank-0:#9A968C; --rank-1:#C87A3E; --rank-2:#93A3B0;
@@ -121,6 +125,7 @@
   --line:#3A3D45; --line-fuerte:#F0EEE9;
   --text:#F0EEE9; --muted:#A9A69C; --dim:#938F86;
   --accent:#5BB3D9; --accent-text:#10171B;
+  --ac-celeste:#5BB3D9; --ac-azul:#86A6FF; --ac-naranja:#F2994E; --ac-morado:#B7A1F7; --ac-verde:#7FC86C; --ac-rojo:#F27D93;
   --good:#3FA070; --warn:#D9A62B; --bad:#E0674A;
   --lamina:#D8D4CB;
   --rank-0:#9A968C; --rank-1:#C87A3E; --rank-2:#93A3B0;
@@ -1056,7 +1061,7 @@ body.reloj-abierto{overflow:hidden}
     transition:scale .15s ease-out}
   .tabs-azul{position:absolute; inset:0; display:flex; z-index:2; pointer-events:none; color:var(--accent)}
   /* Misma caja que el botón de verdad: si no, el texto azul queda corrido sobre el gris. */
-  .tabs-azul .tab{color:var(--accent); background:none; font:inherit; font-size:10px; font-weight:600; line-height:normal; padding:var(--s2) var(--s1)}
+  .tabs-azul .tab{color:var(--accent); background:none}
   .tabs{transition:scale .15s ease-out}
   .tabs.apretada{scale:1.03}
   .tabs.apretada .tab-ind{scale:1.08 1.12; background:color-mix(in srgb, var(--text) 16%, transparent)}
@@ -1247,6 +1252,20 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
   -webkit-backdrop-filter:var(--desenfoque); backdrop-filter:var(--desenfoque); font-size:var(--t-md)}
 .btn.danger.btn-vidrio{color:var(--bad)}
 details.pasados summary, .icono-grupo > summary{min-height:var(--toque)}
+/* El color elegido de la app: después de los bloques de tema, así gana en claro y en oscuro. */
+:root[data-acento="azul"]{--accent:var(--ac-azul)}
+:root[data-acento="naranja"]{--accent:var(--ac-naranja)}
+:root[data-acento="morado"]{--accent:var(--ac-morado)}
+:root[data-acento="verde"]{--accent:var(--ac-verde)}
+:root[data-acento="rojo"]{--accent:var(--ac-rojo)}
+.acentos{gap:var(--s3)}
+.acento-btn{width:var(--toque); height:var(--toque); min-width:var(--toque); padding:0; border-radius:50%; cursor:pointer;
+  background:var(--muestra); border:2px solid transparent; box-shadow:inset 0 0 0 3px var(--surface)}
+.acento-btn[aria-pressed="true"]{border-color:var(--text)}
+/* Barra de abajo: apretar un botón no lo achica ni le pinta fondo (la burbuja ya responde al toque);
+   si no, el texto gris se corre bajo el azul mientras se arrastra. */
+@media (max-width:899px){ .tabs > .tab:active{transform:none; background:none} }
+@media (min-width:900px){ .tabs > .tab{clip-path:none !important; -webkit-clip-path:none !important} }
 </style>
 </head>
 <body>
@@ -3355,7 +3374,7 @@ function viewInicio(){
           <span class="pill">balance ${(g.balance*100).toFixed(0)}%</span>
         </div>
         ${radarHTML(g)}
-        <div class="tip" id="radar-tip">Te frena ${esc(MUSCLES[g.weakest].label)}. Tocá un vértice para abrir ese grupo.</div>
+        <div class="tip" id="radar-tip">Te frena ${esc(MUSCLES[g.weakest].label)}. Cada anillo es un rango y el borde es Campeón. Tocá un vértice para abrir ese grupo.</div>
       </div>
       <div class="card">
         <div class="row between wrap">
@@ -4547,6 +4566,11 @@ function viewAjustes(){
           `<button class="btn sm" data-act="tema" data-tema="${v}"
             aria-pressed="${temaGuardado() === v}">${l}</button>`).join('')}
       </div>
+      <p class="xs muted mt4" id="acento-lbl">Color de la app</p>
+      <div class="row wrap mt3 acentos" role="group" aria-labelledby="acento-lbl">
+        ${ACENTOS.map(([v, l]) => `<button type="button" class="acento-btn" data-act="acento" data-acento="${v}"
+            aria-pressed="${acentoGuardado() === v}" aria-label="${l}" title="${l}" style="--muestra:var(${'--ac-' + v})"></button>`).join('')}
+      </div>
     </div>
 
     <div class="card mt4">
@@ -4678,14 +4702,22 @@ const ABBR = {pecho:'Pec', espalda:'Esp', hombros:'Hom', biceps:'Bic', triceps:'
 
 /* Radar de simetría: la forma del polígono ES el desbalance. Un pico solo
    significa que ese grupo se lleva todo el trabajo. */
+/* Qué tan lejos del centro va un músculo en el radar. El borde es Campeón (rango 7), no "el
+   músculo con más puntos": un solo entrenamiento de hombro no lo pone al máximo. La raíz agranda
+   los primeros pasos (un entrenamiento ya se ve) y comprime los últimos; cada anillo es un rango. */
+const anilloRadar = nivel => Math.sqrt(nivel / 7);
+function escalaRadar(rank){
+  if(rank.i >= 7) return 1;
+  return Math.max(.04, Math.min(1, anilloRadar(rank.i + rank.progress)));
+}
 function radarHTML(g){
   const n = MUSCLE_IDS.length, R = 72, cx = 110, cy = 96;
-  const max = Math.max(...MUSCLE_IDS.map(id => g.m[id].pts), 1);
   const ang = i => (i / n) * Math.PI * 2 - Math.PI / 2;
   const pt = (i, k) => [cx + Math.cos(ang(i)) * R * k, cy + Math.sin(ang(i)) * R * k];
-  const f  = id => Math.max(.05, g.m[id].pts / max);
+  const f  = id => escalaRadar(g.m[id].rank);
 
-  const grid = [.25,.5,.75,1].map(k =>
+  // Un anillo por rango: llegar a un anillo es subir de rango, y el borde es Campeón.
+  const grid = [1, 2, 3, 4, 5, 6, 7].map(anilloRadar).map(k =>
     `<polygon points="${MUSCLE_IDS.map((_,i)=>pt(i,k).map(v=>v.toFixed(1)).join(',')).join(' ')}"
       fill="none" stroke="var(--line)" stroke-width=".7"/>`).join('');
   const spokes = MUSCLE_IDS.map((_,i) =>
@@ -4696,7 +4728,8 @@ function radarHTML(g){
     const d = g.m[id];
     // El aro transparente (stroke) agranda el área que responde al toque a unos 44 px sin
     // cambiar cómo se ve el punto.
-    return `<circle class="radar-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4"
+    // Sin entrenar, el punto es más chico: así no tapa en el centro a los que sí avanzaron.
+    return `<circle class="radar-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${d.pts > 0 ? 2.8 : 1.6}"
       fill="${d.rank.tier.c}" stroke="transparent" stroke-width="24" data-act="open-muscle" data-mus="${id}"
       data-tipfor="radar-tip" data-tiptext="${esc(MUSCLES[id].label + ' · ' + d.rank.tier.n + ' · ' + fmtNum(d.pts) + ' pts · entrenado ' + heatLabel(d.last))}"
       role="button" tabindex="0" aria-label="${esc(MUSCLES[id].label)}"/>`;
@@ -6792,6 +6825,7 @@ function handleAction(act, btn, ev){
     aplicarTema(btn.dataset.tema);
     render();
     break;
+  case 'acento': aplicarAcento(btn.dataset.acento); render(); break;
   case 'save-bw':
     state.profile.bodyweightKg = Number($('#bw').value) || 70;
     save();
@@ -8049,7 +8083,13 @@ function montarIndicadorTabs(){
   // La capa azul: una copia de las secciones, toda en azul y recortada por la burbuja.
   tabsAzul = document.createElement('div');
   tabsAzul.className = 'tabs-azul'; tabsAzul.setAttribute('aria-hidden', 'true');
-  tabsAzul.innerHTML = [...nav.querySelectorAll(':scope > .tab')].map(t => `<span class="tab">${t.innerHTML}</span>`).join('');
+  // Clones de los botones de verdad: mismas reglas (también las de pantalla táctil), misma caja.
+  for(const t of nav.querySelectorAll(':scope > .tab')){
+    const c = t.cloneNode(true);
+    c.removeAttribute('data-view'); c.removeAttribute('aria-current');
+    c.tabIndex = -1; c.setAttribute('aria-hidden', 'true');
+    tabsAzul.appendChild(c);
+  }
   nav.appendChild(tabsAzul);
   const act = nav.querySelector('.tab[aria-current="page"]');
   if(act) moverIndicador(act, true);
@@ -8061,6 +8101,15 @@ function recorteAzul(x, w, W){
   const izq = Math.max(0, Math.min(x, W)), der = Math.max(0, Math.min(W - (x + w), W));
   return `inset(0 ${der.toFixed(1)}px 0 ${izq.toFixed(1)}px)`;
 }
+/* El gris de un botón (en `left`, de ancho `tw`) con un agujero donde está la burbuja (`x`, `w`):
+   ahí solo se ve el azul de arriba, así nunca hay dos textos encimados. Pura. */
+function agujeroGris(x, w, left, tw){
+  const a = Math.max(0, Math.min(x - left, tw)), b = Math.max(0, Math.min(x + w - left, tw));
+  if(b - a < .5) return 'none';
+  if(a < .5 && b > tw - .5) return 'inset(50%)';                                   // tapado entero
+  const f = v => v.toFixed(1) + 'px';
+  return `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${f(a)} 0, ${f(a)} 100%, ${f(b)} 100%, ${f(b)} 0, ${f(a)} 0)`;
+}
 function ponerIndicador(x){
   tabIndX = x;
   if(!tabInd) return;
@@ -8068,6 +8117,10 @@ function ponerIndicador(x){
   if(tabsAzul){
     const nav = tabsAzul.parentElement, w = parseFloat(tabInd.style.width) || tabInd.offsetWidth;
     tabsAzul.style.clipPath = tabsAzul.style.webkitClipPath = recorteAzul(x, w, nav.clientWidth);
+    for(const t of nav.querySelectorAll(':scope > .tab')){
+      const c = agujeroGris(x, w, t.offsetLeft, t.offsetWidth);
+      t.style.clipPath = t.style.webkitClipPath = c === 'none' ? '' : c;
+    }
   }
 }
 function moverIndicador(tab, sinAnimar){
@@ -8373,6 +8426,22 @@ function aplicarTema(t){
   if(cs) cs.content = t === 'auto' ? 'light dark' : t;
 }
 aplicarTema(temaGuardado());
+
+/* El color de la app (Ajustes → Apariencia): como el tema, es de este aparato. */
+const CLAVE_ACENTO = 'bauTracker.acento';
+const ACENTOS = [['celeste', 'Celeste'], ['azul', 'Azul'], ['naranja', 'Naranja'], ['morado', 'Morado'], ['verde', 'Verde'], ['rojo', 'Rojo']];
+function acentoGuardado(){
+  let a = 'celeste';
+  try{ a = localStorage.getItem(CLAVE_ACENTO) || 'celeste'; }catch(e){}
+  return ACENTOS.some(([v]) => v === a) ? a : 'celeste';
+}
+function aplicarAcento(a){
+  if(!ACENTOS.some(([v]) => v === a)) a = 'celeste';
+  if(a === 'celeste') document.documentElement.removeAttribute('data-acento');
+  else document.documentElement.setAttribute('data-acento', a);
+  try{ localStorage.setItem(CLAVE_ACENTO, a); }catch(e){}
+}
+aplicarAcento(acentoGuardado());
 
 /* ==========================================================================
    13. INIT
