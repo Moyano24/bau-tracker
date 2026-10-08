@@ -394,6 +394,16 @@ td{padding:var(--s2); border-top:1px solid var(--line)}
   text-align:center; padding:var(--s6) var(--s4);
   color:var(--dim); border:1px dashed var(--line); border-radius:var(--r2);
 }
+.empty p{margin:0}
+.empty-ico{display:block; width:28px; height:28px; margin:0 auto var(--s2); color:var(--dim)}
+.empty-ico svg{display:block}
+.empty .row{justify-content:center; margin-top:var(--s3)}
+/* Resumen de la semana: los mosaicos de los hábitos, tintados con el color de la app. */
+.resumen-semana{margin-bottom:var(--s4); --tinta:var(--accent)}
+.resumen-semana .stats{grid-template-columns:repeat(2, minmax(0, 1fr))}
+@media (min-width:900px){ .resumen-semana .stats{grid-template-columns:repeat(4, minmax(0, 1fr))} }
+.resumen-semana .stat span{display:block; margin:var(--s1) 0 0}
+.resumen-semana .stat span.sube{color:var(--good)}
 
 /* ---- Mapa corporal ---- */
 .bodies{display:flex; gap:var(--s5); justify-content:center; flex-wrap:wrap}
@@ -3237,9 +3247,58 @@ function verMasHTML(lista, total, mostradas){
     </button></div>`;
 }
 
-function emptyHTML(msg){ return `<div class="empty">${esc(msg)}</div>`; }
+/* Una pantalla vacía: el mensaje y, si sirve, un ícono y los botones para empezar.
+   acciones: [{ act, texto, attrs }] (attrs = atributos extra, ya escapados). */
+function emptyHTML(msg, { icono = '', acciones = [] } = {}){
+  return `<div class="empty">${icono && ICONOS[icono] ? `<span class="empty-ico" aria-hidden="true">${iconoSVG(icono, 28)}</span>` : ''}<p>${esc(msg)}</p>${acciones.length
+    ? `<div class="row wrap">${acciones.map((a, i) => `<button type="button" class="btn sm${i === 0 ? ' primary' : ''}" data-act="${a.act}"${a.attrs || ''}>${esc(a.texto)}</button>`).join('')}</div>` : ''}</div>`;
+}
 
 /* ---- Inicio ---- */
+/* ---- Resumen de la semana ----
+   Durante la semana, Inicio abre con cómo te fue la semana pasada contra la anterior, hasta
+   que tocás "Listo" (se recuerda en este aparato, por semana). Una semana sin nada, no se muestra. */
+const CLAVE_RESUMEN = 'bauTracker.resumenVisto';
+/* Los números de la semana que empieza el lunes `lunes` (AAAA-MM-DD). Los días por venir no cuentan. */
+function numerosSemana(lunes){
+  const dias = semanaDe(lunes), hoy = iso(), enSemana = d => d >= dias[0] && d <= dias[6];
+  let hechos = 0, programados = 0;
+  for(const d of dias){ if(d > hoy) break; const a = avanceDia(d); hechos += a.hechos; programados += a.programados; }
+  const ses = state.gym.sessions.filter(s => enSemana(s.date));
+  return {
+    habitos: programados ? hechos / programados : null, hechos, programados,
+    sesiones: ses.length,
+    series: ses.reduce((a, s) => a + s.exercises.reduce((b, x) => b + x.sets.length, 0), 0),
+    records: ses.reduce((a, s) => a + s.exercises.filter(x => esRecord(s, x)).length, 0),
+    estudioMin: state.estudio.entries.filter(x => enSemana(x.date)).reduce((a, x) => a + (Number(x.minutes) || 0), 0),
+  };
+}
+/* "▲ antes 3" / "▼ antes 5" / "igual que antes"; nada si no hay con qué comparar. */
+function comparacionHTML(ahora, antes, fmt){
+  if(ahora === null || antes === null || (!ahora && !antes)) return '';
+  if(Math.abs(ahora - antes) < 1e-9) return '<span>igual que la anterior</span>';
+  return `<span${ahora > antes ? ' class="sube"' : ''}>${ahora > antes ? '▲' : '▼'} la anterior: ${fmt(antes)}</span>`;
+}
+function resumenSemanaHTML(){
+  const lunes = lunesDe(new Date()), pasada = iso(addDays(lunes, -7));
+  if(leerClave(CLAVE_RESUMEN) === pasada) return '';
+  const a = numerosSemana(pasada), b = numerosSemana(iso(addDays(lunes, -14)));
+  if(!a.sesiones && !a.estudioMin && !a.hechos) return '';
+  const dias = semanaDe(pasada), pct = v => Math.round(v * 100) + ' %', horas = m => fmtH(m / 60) + ' h';
+  const tiles = [
+    ['Hábitos cumplidos', a.habitos === null ? '—' : Math.round(a.habitos * 100), a.habitos === null ? '' : '%', comparacionHTML(a.habitos, b.habitos, pct)],
+    ['Entrenamientos', a.sesiones, '', `<span>${a.series} ${a.series === 1 ? 'serie' : 'series'}</span>${comparacionHTML(a.sesiones, b.sesiones, String)}`],
+    ['Estudio', fmtH(a.estudioMin / 60), 'h', comparacionHTML(a.estudioMin, b.estudioMin, horas)],
+    ['Récords nuevos', a.records, '', comparacionHTML(a.records, b.records, String)],
+  ];
+  return `<div class="card resumen-semana" id="resumen-semana">
+    <div class="row between wrap"><h2>Tu semana pasada</h2><button type="button" class="btn sm" data-act="resumen-listo">Listo</button></div>
+    <p class="xs muted mt3">Del ${esc(fechaCorta(dias[0]))} al ${esc(fechaCorta(dias[6]))}, contra la semana anterior.</p>
+    <div class="stats">${tiles.map(([et, val, suf, extra]) =>
+      `<div class="stat"><small>${et}</small><b>${val}</b>${suf ? `<span style="display:inline;margin-left:var(--s1)">${suf}</span>` : ''}${extra}</div>`).join('')}</div>
+  </div>`;
+}
+
 function viewInicio(){
   const g = computeGym(), p = computePersonal(), h = computeHabitos();
 
@@ -3269,6 +3328,7 @@ function viewInicio(){
 
   return `
     ${avisoBackupHTML()}
+    ${resumenSemanaHTML()}
     <div class="card">
       <div class="hero">
         ${panelHTML(secs, avg)}
@@ -3322,7 +3382,8 @@ function viewInicio(){
           <span>${i.ico} ${esc(i.txt)}</span>
           <span class="xs dim">${fmtDate(i.date)}</span>
         </div>`).join('')}</div>`
-        : `<div class="mt3">${emptyHTML('Todavía no cargaste nada. Empezá por cualquier sección.')}</div>`}
+        : `<div class="mt3">${emptyHTML('Todavía no cargaste nada. ¿Por dónde empezás?', { icono: 'lista', acciones: [
+          { act: 'new-session', texto: 'Un entrenamiento' }, { act: 'new-study', texto: 'Una sesión de estudio' }, { act: 'new-habit', texto: 'Un hábito' }] })}</div>`}
     </div>`;
 }
 
@@ -3542,7 +3603,7 @@ function viewGym(){
           ${s.notes ? `<div class="xs dim" style="margin-top:var(--s1)">${esc(s.notes)}</div>` : ''}
         </div></div>`;
       }).join('')}</div>${verMasHTML('gym', sesionesTodas.length, sesiones.length)}`
-        : `<div class="mt3">${emptyHTML('Sin entrenamientos cargados.')}</div>`}
+        : `<div class="mt3">${emptyHTML('Todavía no cargaste entrenamientos.', { icono: 'mancuerna', acciones: [{ act: 'new-session', texto: 'Cargar el primero' }] })}</div>`}
     </div>`;
 }
 
@@ -3604,7 +3665,7 @@ function bloqueEstudio(){
           <div class="bar" style="margin-top:var(--s1)">
             <i style="--p:${top ? (min/top).toFixed(3) : 0}"></i>
           </div>
-        </div>`).join('')}</div>` : `<div class="mt3">${emptyHTML('Sin materias todavía.')}</div>`}
+        </div>`).join('')}</div>` : `<div class="mt3">${emptyHTML('Las materias aparecen cuando cargás una sesión de estudio.', { icono: 'libro', acciones: [{ act: 'new-study', texto: 'Cargar una sesión' }] })}</div>`}
     </div>
 
     <div class="card mt4">
@@ -3620,7 +3681,7 @@ function bloqueEstudio(){
             <button class="btn sm btn-vidrio" data-act="edit-study" data-id="${x.id}">✎</button>
             <button class="btn sm danger btn-vidrio" data-act="del-study" data-id="${x.id}">✕</button>
           </td></tr>`).join('')}</tbody></table></div>`
-        : `<div class="mt3">${emptyHTML('Sin sesiones cargadas.')}</div>`}
+        : `<div class="mt3">${emptyHTML('Todavía no hay sesiones de estudio.', { icono: 'reloj' })}</div>`}
       ${verMasHTML('estudio', entriesTodas.length, entries.length)}
     </div>`;
 }
@@ -3923,7 +3984,7 @@ function vistaHoyHTML(list, dia = habDia || iso()){
   const toca = hb => programado(hb, dia) || activo(hb.id, dia) || salteado(hb.id, dia);
   const visibles = list.filter(toca), libres = list.filter(hb => !toca(hb));
   return (visibles.length || !libres.length ? visibles.map(hb => filaHoyHTML(hb, dia)).join('')
-            : `<div style="grid-column:1 / -1">${emptyHTML(esHoy ? 'Hoy no toca ningún hábito.' : 'Ese día no tocaba ningún hábito.')}</div>`) +
+            : `<div style="grid-column:1 / -1">${emptyHTML(esHoy ? 'Hoy no toca ningún hábito.' : 'Ese día no tocaba ningún hábito.', { icono: 'calendario' })}</div>`) +
     (libres.length ? `
       <button type="button" class="no-tocan" data-act="no-tocan" aria-expanded="${habNoTocan}">${libres.length} ${
         libres.length === 1 ? 'no toca' : 'no tocan'} ${esHoy ? 'hoy' : 'ese día'} · registrar igual <span aria-hidden="true">${habNoTocan ? '▴' : '▾'}</span></button>
@@ -4462,9 +4523,9 @@ function listaHabitosHTML(){
       ${navegacionHTML(habVista)}
       ${visibles.length
         ? `<div class="lista-hab ${habVista === 'semana' || habVista === 'mes' ? '' : 'mt3'}">${vistas[habVista](visibles)}</div>`
-        : `<div class="mt4">${emptyHTML('Ningún hábito con esta categoría.')}</div>`}
+        : `<div class="mt4">${emptyHTML('Ningún hábito con esta categoría.', { acciones: [{ act: 'filtro-hab', texto: 'Ver todos', attrs: ' data-cat=""' }] })}</div>`}
       ${habMulti ? seleccionBarraHTML() : ''}`
-    : `<div class="mt4">${emptyHTML('Agregá tu primer hábito.')}</div>`}`;
+    : `<div class="mt4">${emptyHTML('Todavía no tenés hábitos.', { icono: 'checklist', acciones: [{ act: 'new-habit', texto: 'Crear el primero' }] })}</div>`}`;
 }
 
 function viewHabitos(){
@@ -6723,6 +6784,7 @@ function handleAction(act, btn, ev){
     break;
   case 'det-vista': habDetVista = btn.dataset.v; habOffset = 0; render(); break;
   case 'filtro-hab': habFiltro = btn.dataset.cat || null; render(); break;
+  case 'resumen-listo': escribirClave(CLAVE_RESUMEN, iso(addDays(lunesDe(new Date()), -7))); render(); break;
   case 'nav-hab': habOffset = Math.max(0, habOffset + Number(btn.dataset.d)); render(); break;
 
   /* --- ajustes --- */
@@ -7380,7 +7442,7 @@ function examenesHTML(){
   return `<div class="card mt4" id="examenes">
     <div class="row between wrap"><h2>Próximos exámenes</h2><button class="btn sm" data-act="new-examen">+ Examen</button></div>
     ${proximos.length ? `<div class="list mt3">${proximos.map(x => fila(x, false)).join('')}</div>`
-      : `<div class="mt3">${emptyHTML('Cargá tu próximo parcial y cuántas horas querés llegar a estudiarle: te dice cuánto te toca por semana.')}</div>`}
+      : `<div class="mt3">${emptyHTML('Cargá tu próximo parcial y cuántas horas querés llegar a estudiarle: te dice cuánto te toca por semana.', { icono: 'calendario', acciones: [{ act: 'new-examen', texto: 'Cargar un examen' }] })}</div>`}
     ${pasados.length ? `<details class="pasados"><summary>Pasados (${pasados.length})</summary><div class="list mt3">${pasados.map(x => fila(x, true)).join('')}</div></details>` : ''}
   </div>`;
 }
