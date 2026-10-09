@@ -251,12 +251,35 @@ main{padding:var(--s4); padding-bottom:96px; max-width:1100px; width:100%}
 .marca{flex:none; display:block}
 
 /* El punto de la sincronización, arriba a la derecha: se toca y lleva a la cuenta. */
-.sync-ind{width:32px; height:32px; padding:0; border:0; background:none; display:grid; place-items:center; cursor:pointer}
+.sync-ind{min-height:32px; padding:0 var(--s2); border:1px solid var(--line); border-radius:99px; background:var(--surface); color:var(--text);
+  display:inline-flex; align-items:center; gap:6px; font:inherit; font-size:var(--t-xs); font-weight:600; cursor:pointer}
 .sync-ind[hidden]{display:none}
-.sync-ind::after{content:""; width:10px; height:10px; border-radius:50%; background:var(--good)}
-.sync-ind[data-estado="pendiente"]::after, .sync-ind[data-estado="subiendo"]::after{background:var(--warn)}
-.sync-ind[data-estado="sin-conexion"]::after{background:transparent; border:2px solid var(--muted)}
-.sync-ind[data-estado="error"]::after, .sync-ind[data-estado="conflicto"]::after{background:var(--bad)}
+.sync-ind i{flex:none; width:8px; height:8px; border-radius:50%; background:var(--good)}
+.sync-ind[data-estado="pendiente"] i, .sync-ind[data-estado="subiendo"] i{background:var(--warn)}
+.sync-ind[data-estado="sin-conexion"] i{background:transparent; border:2px solid var(--muted); box-sizing:border-box}
+.sync-ind[data-estado="error"] i, .sync-ind[data-estado="conflicto"] i{background:var(--bad)}
+@media (max-width:420px){ .sync-ind[data-estado="listo"] span{display:none} }
+.cuenta-lados.cl-2{grid-template-columns:1fr 1fr}
+.cuenta-lados .btn.lado{display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; gap:2px; min-height:104px; padding:var(--s3); font-size:var(--t-xs); font-weight:400; color:var(--muted)}
+.cuenta-lados .btn.lado b{font-size:var(--t-md); color:var(--text)}
+.cuenta-lados .btn.lado em{margin-top:auto; font-style:normal; font-weight:600; color:var(--accent)}
+.pill .ico-h{flex:none}
+.ini-hero{display:grid; gap:var(--s5)}
+#view-title.es-fecha{font-family:var(--font); font-size:var(--t-xs); font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--dim)}
+.panel .bloque{background:color-mix(in srgb, var(--c) 9%, var(--surface)); border-color:color-mix(in srgb, var(--c) 30%, var(--line))}
+.bloque-meta{display:flex; align-items:flex-start; gap:6px; font-size:var(--t-xs); color:var(--muted); line-height:1.25; text-wrap:pretty}
+.bloque-meta i{flex:none; width:8px; height:8px; margin-top:.3em; border-radius:2px; background:var(--cn)}
+.radar-halo{animation:pulsez 1.8s ease-in-out infinite}
+.constancia .hcell.today{outline:2px solid var(--line-fuerte); outline-offset:1px}
+@media (prefers-reduced-motion:reduce){ .radar-halo{animation:none} }
+.ini-titulo{margin:var(--s1) 0 0; font-family:var(--font-display); font-weight:700; font-size:clamp(40px, 9vw, 60px); line-height:.95; letter-spacing:-.02em; text-wrap:balance}
+.ini-titulo em{font-style:normal; color:var(--accent)}
+.ini-sub{margin-top:var(--s2); color:var(--muted); text-wrap:pretty}
+.ini-acc{display:flex; flex-wrap:wrap; gap:var(--s2)}
+.ini-acc .btn{min-height:44px}
+.ini-acc .btn-prim{background:var(--accent); color:var(--accent-text); border-color:var(--accent); font-weight:600}
+.ini-examen{display:flex; align-items:center; gap:var(--s3); width:100%; padding:var(--s3) var(--s4); border:1px solid var(--line); border-radius:14px; background:var(--surface); color:var(--text); font:inherit; text-align:left; cursor:pointer}
+.ini-examen b{color:var(--warn)}
 .cuenta-lados{display:grid; gap:var(--s2); margin-top:var(--s3)}
 .cuenta-lados .btn{justify-content:flex-start; text-align:left; min-height:52px}
 /* Siri y Atajos: cada dato para copiar en su renglón (la clave pública es larga: se corta donde sea). */
@@ -2331,7 +2354,7 @@ function guardarLocal(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }catch(err){
     // Pasa si el navegador bloquea el almacenamiento (modo privado, cuota llena).
-    toast('⚠ No se pudo guardar. Exportá tus datos desde Ajustes.');
+    toast('No se pudo guardar. Exportá tus datos desde Ajustes.');
     console.error(err);
   }
 }
@@ -3340,32 +3363,39 @@ function viewInicio(){
 
   // Últimas 5 actividades de cualquier sección, mezcladas y ordenadas por fecha.
   const feed = [
-    ...state.gym.sessions.map(s => ({date:s.date, txt:`Entrenaste · ${s.exercises.length} ${s.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}`, ico:'⛰'})),
-    ...state.estudio.entries.map(x => ({date:x.date, txt:`${x.subject} · ${x.minutes} min`, ico:'✎'})),
-    ...state.freelance.items.map(i => ({date:i.updatedAt, txt:`${i.client} → ${STAGES.find(s=>s.id===i.stage).label}`, ico:'◑'})),
+    ...state.gym.sessions.map(s => ({date:s.date, txt:`Entrenaste · ${s.exercises.length} ${s.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}`, ico:iconoSVG('montana',16)})),
+    ...state.estudio.entries.map(x => ({date:x.date, txt:`${x.subject} · ${x.minutes} min`, ico:iconoSVG('libro',16)})),
+    ...state.freelance.items.map(i => ({date:i.updatedAt, txt:`${i.client} → ${STAGES.find(s=>s.id===i.stage).label}`, ico:icoT(IT.circulo,16)})),
   ].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 5);
+
+  const ultimaSes = state.gym.sessions.map(s => s.date).sort().pop();
+  const ex = proximoExamen(), dEx = ex && diasHasta(ex.fecha);
+  const flojo = MUSCLES[g.weakest].label;
+  // Cuántos días de esta semana (hasta hoy) tuvieron algo de gym, estudio, freelance o hábitos.
+  const semAct = (() => { const l = lunesDe(new Date()); let n = 0, de = 0;
+    const gs = new Set(state.gym.sessions.map(s => s.date)), ps = new Set(state.estudio.entries.map(e => e.date).concat(state.freelance.items.map(i => i.updatedAt)));
+    for(let d = 0; d < 7; d++){ const k = iso(addDays(l, d)); if(k > hoy) break; de++;
+      if(gs.has(k) || ps.has(k) || state.habitos.list.some(hb => activo(hb.id, k))) n++; }
+    return { n, de }; })();
 
   return `
     ${avisoBackupHTML()}
     ${resumenSemanaHTML()}
-    <div class="card">
-      <div class="hero">
-        ${panelHTML(secs, avg)}
-        <div>
-          <h2>Hoy</h2>
-      <div class="row wrap mt3">
-        <span class="pill">${entrenoHoy ? '✔ Entrenaste' : '○ Sin entrenar'}</span>
-        <span class="pill">${minHoy} min de estudio</span>
-        <span class="pill">${avHoy.hechos}/${avHoy.programados} hábitos</span>
-        ${mejorRacha && mejorRacha.n > 0
-          ? `<span class="pill">🔥 ${mejorRacha.n} días · ${esc(mejorRacha.name)}</span>` : ''}
-        ${(() => { const ex = proximoExamen(), d = ex && diasHasta(ex.fecha);
-          return ex && d <= 21 ? `<span class="pill" data-examen-chip>📅 ${TIPOS_EXAMEN[ex.tipo]} de ${esc(ex.materia)} ${cuandoExamen(d)}</span>` : ''; })()}
-          </div>
-          <div class="xs dim mt5">Tocá un bloque para ver cuánto te falta e ir a esa sección.</div>
-        </div>
+    <div class="card ini-hero">
+      <div>
+        <h2 class="ini-titulo">${entrenoHoy ? 'Día de gym <em>cumplido</em>' : `Hoy toca <em>${esc(flojo)}</em>`}</h2>
+        <p class="ini-sub">${entrenoHoy ? `Tu grupo más flojo sigue siendo ${esc(flojo)}.` : 'Es tu grupo más flojo.'}${ultimaSes ? ' Última sesión: ' + fmtDate(ultimaSes) + '.' : ''}${minHoy ? ` Hoy estudiaste ${minHoy} min.` : ''}</p>
       </div>
+      <div class="ini-acc">
+        <button class="btn btn-prim" data-act="new-session">${entrenoHoy ? 'Otra sesión' : 'Empezar sesión'}</button>
+        <button class="btn" data-act="new-study">Cargar estudio</button>
+      </div>
+      ${panelHTML(secs, avg)}
     </div>
+
+    ${ex && dEx <= 21 ? `<button type="button" class="ini-examen mt4" data-examen-chip data-act="go-sec" data-view="personal">
+      ${iconoSVG('calendario', 20)}<span style="flex:1">${TIPOS_EXAMEN[ex.tipo]} de ${esc(ex.materia)}</span><b>${cuandoExamen(dEx)}</b>
+    </button>` : ''}
 
     <div class="grid grid-2 mt4">
       <div class="card">
@@ -3391,6 +3421,10 @@ function viewInicio(){
         ${leyendaConstanciaHTML()}
       </div>
       <div class="mt3">${globalHeatHTML()}</div>
+      <div class="row between wrap mt3">
+        <span class="xs"><b>Esta semana:</b> ${semAct.n} de ${semAct.de} días con actividad</span>
+        <span class="xs dim">El borde marca hoy</span>
+      </div>
       <div class="tip" id="act-tip">Cada celda es un día: gym, estudio, freelance y hábitos.</div>
     </div>
 
@@ -3398,7 +3432,7 @@ function viewInicio(){
       <h2>Última actividad</h2>
       ${feed.length ? `<div class="list mt3">${feed.map(i => `
         <div class="row between item">
-          <span>${i.ico} ${esc(i.txt)}</span>
+          <span style="display:inline-flex;align-items:center;gap:8px">${i.ico} ${esc(i.txt)}</span>
           <span class="xs dim">${fmtDate(i.date)}</span>
         </div>`).join('')}</div>`
         : `<div class="mt3">${emptyHTML('Todavía no cargaste nada. ¿Por dónde empezás?', { icono: 'lista', acciones: [
@@ -3697,7 +3731,7 @@ function bloqueEstudio(){
           <td class="muted">${esc(x.topic || '—')}${x.fuente === 'pomodoro' ? ' <span class="xs" title="Registrada con el pomodoro">· pomodoro</span>' : ''}</td>
           <td>${x.minutes}</td>
           <td class="row">
-            <button class="btn sm btn-vidrio" data-act="edit-study" data-id="${x.id}">✎</button>
+            <button class="btn sm btn-vidrio" data-act="edit-study" data-id="${x.id}">${icoT(IT.lapiz,16)}</button>
             <button class="btn sm danger btn-vidrio" data-act="del-study" data-id="${x.id}">✕</button>
           </td></tr>`).join('')}</tbody></table></div>`
         : `<div class="mt3">${emptyHTML('Todavía no hay sesiones de estudio.', { icono: 'reloj' })}</div>`}
@@ -3755,7 +3789,7 @@ function bloqueFreelance(){
                     ${idx === 0 ? 'disabled' : ''} aria-label="Etapa anterior">‹</button>
                   <button class="btn sm btn-vidrio" data-act="move" data-id="${i.id}" data-dir="1"
                     ${idx === STAGES.length-1 ? 'disabled' : ''} aria-label="Etapa siguiente">›</button>
-                  <button class="btn sm btn-vidrio" data-act="edit-item" data-id="${i.id}">✎</button>
+                  <button class="btn sm btn-vidrio" data-act="edit-item" data-id="${i.id}">${icoT(IT.lapiz,16)}</button>
                 </div>
                 ${seguimientoHTML(i)}
               </div>`).join('') || `<div class="xs dim">—</div>`}
@@ -3910,6 +3944,13 @@ function claseDia(hb, dia, ini){
    se dibuja nada inventado). iconoHabitoHTML decide QUÉ ícono lleva un hábito:
    su ícono propio, si no su emoji, si no el de su primera categoría, si no un punto.
    El emoji entra escapado; el SVG solo sale de la biblioteca, nunca de texto ajeno. */
+const IT = {
+  check:'<path d="M5 12l5 5 9-10"/>', alerta:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/>',
+  play:'<path d="M8 5l11 7-11 7z"/>', lapiz:'<path d="M4 20l1-4 11-11 3 3L8 19z"/>',
+  circulo:'<circle cx="12" cy="12" r="7"/>', chev:'<path d="M9 6l6 6-6 6"/>' };
+function icoT(d, tam = 14){
+  return `<svg class="ico-h" viewBox="0 0 24 24" width="${tam}" height="${tam}" aria-hidden="true" focusable="false">${d}</svg>`;
+}
 function iconoSVG(id, tam = 24){
   if(!iconoValido(id)) return '';
   return `<svg class="ico-h" viewBox="0 0 24 24" width="${tam}" height="${tam}" aria-hidden="true" focusable="false">${ICONOS[id].d}</svg>`;
@@ -3982,7 +4023,7 @@ function filaHoyHTML(hb, dia = habDia || iso()){
   const v = valorDia(hb.id, dia), meta = metaDia(hb, dia) || Number(hb.meta), paso = fmtV(pasoDe(hb));
   // El temporizador registra en el día en que se empieza: solo se ofrece hoy.
   const play = esTiempo(hb) && dia === iso() ? `<button class="chk play" data-act="hab-reloj" data-habit="${id}"
-      aria-label="${habTimer && habTimer.id === hb.id ? 'Ver el temporizador de' : 'Empezar el temporizador de'} ${esc(hb.name)}">${habTimer && habTimer.id === hb.id ? '⏱' : '▶'}</button>` : '';
+      aria-label="${habTimer && habTimer.id === hb.id ? 'Ver el temporizador de' : 'Empezar el temporizador de'} ${esc(hb.name)}">${habTimer && habTimer.id === hb.id ? iconoSVG('reloj',16) : icoT(IT.play,16)}</button>` : '';
   return `${abre}
     ${habCabHTML(hb, llamaHTML(hb) + play, true, marca, sk)}
     <div class="hab-cant">
@@ -4678,6 +4719,7 @@ function panelHTML(secs, avg){
       <span class="cifra">${s.r.i + 1}</span>
       <span class="bloque-rango">${esc(s.r.tier.n)}</span>
       <span class="bar" style="--barra:var(--c)"><i style="--p:${s.r.progress.toFixed(3)}"></i></span>
+      <span class="bloque-meta" style="--cn:${s.r.next === null ? 'var(--c)' : TIERS[s.r.i + 1].c}"><i></i>${esc(faltaTxt(s.r, s.unit, s.dec))}</span>
     </button>`).join('');
   return `<div>
     <div class="panel">${bloques}</div>
@@ -4737,7 +4779,7 @@ function radarHTML(g){
   const labels = MUSCLE_IDS.map((id,i) => {
     const [x,y] = pt(i, 1.2);
     const anchor = Math.abs(x - cx) < 8 ? 'middle' : (x > cx ? 'start' : 'end');
-    return `<text x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="${anchor}" font-size="7.5" fill="var(--muted)">${ABBR[id]}</text>`;
+    return `<text x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="${anchor}" font-size="7.5" fill="${id === g.weakest ? 'var(--text)' : 'var(--muted)'}" font-weight="${id === g.weakest ? 700 : 400}" class="${id === g.weakest ? 'radar-halo' : ''}">${ABBR[id]}</text>`;
   }).join('');
 
   return `<svg class="viz" viewBox="0 0 220 200" role="img" aria-label="Radar de simetría muscular">
@@ -4850,7 +4892,7 @@ function seriesSemanaHTML(){
   const titulo = gymSemana === 0 ? 'Esta semana' : gymSemana === 1 ? 'La semana pasada' : 'Semana del ' + fechaCorta(lunes);
   const filas = MUSCLE_IDS.map(id => {
     const [min, max] = objetivoSeries(id), n = ss[id], escala = max * 1.25;
-    const estado = n < min ? `<span class="serie-falta">⚠ faltan ${fmtNum(min - n, n % 1 ? 1 : 0)}</span>`
+    const estado = n < min ? `<span class="serie-falta">${icoT(IT.alerta,12)} faltan ${fmtNum(min - n, n % 1 ? 1 : 0)}</span>`
                  : n > max ? '<span class="muted">pasaste el tope</span>' : '<span class="muted">✓ en rango</span>';
     return `<div class="serie${n >= min && n <= max ? ' ok' : ''}" data-mus="${id}">
       <div class="serie-cab"><b>${esc(MUSCLES[id].label)}</b><span>${fmtNum(n, n % 1 ? 1 : 0)} / ${min}–${max} · ${estado}</span></div>
@@ -4989,7 +5031,9 @@ const VIEWS = {
 };
 
 function renderInterno(){
-  $('#view-title').textContent = VIEW_TITLES[view];
+  { const vt = $('#view-title'), esIni = view === 'inicio';
+    vt.textContent = esIni ? new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) : VIEW_TITLES[view];
+    vt.classList.toggle('es-fecha', esIni); }
   // render() reemplaza todo el HTML, así que una transición de CSS nunca corre: se
   // anota cuánto estaba llena cada tarjeta de Hoy para recorrer desde ahí hasta el valor nuevo.
   const llenas = new Map(), prendidas = new Map();
@@ -4998,6 +5042,20 @@ function renderInterno(){
     const l = c.querySelector('.llama'); if(l) prendidas.set(c.dataset.hid, l.dataset.on);
   });
   $('#main').innerHTML = VIEWS[view]();
+  if(view === 'inicio' && !window.__iniAnimado){
+    window.__iniAnimado = true;
+    if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+      $$('#main .panel .bloque').forEach(b => {
+        const c = b.querySelector('.cifra'), bar = b.querySelector('.bar > i');
+        const fin = Number(c && c.textContent) || 0, t0 = performance.now(), dur = 600;
+        if(bar){ const p = bar.style.getPropertyValue('--p'); bar.style.transition = 'none'; bar.style.setProperty('--p', '0');
+          void bar.offsetWidth; bar.style.transition = 'transform .6s var(--ease-out)'; bar.style.setProperty('--p', p); }
+        if(c && fin > 1){ const paso = now => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+          c.textContent = String(Math.max(1, Math.round(fin * e))); if(k < 1) requestAnimationFrame(paso); };
+          c.textContent = '1'; requestAnimationFrame(paso); }
+      });
+    }
+  }
   $$('#main .rellena[data-hid]').forEach(c => {
     const antes = llenas.get(c.dataset.hid + '|' + c.dataset.dia);
     if(antes !== undefined && antes !== c.dataset.p){ c.style.setProperty('--p0', antes); c.classList.add('anima'); }
@@ -7171,9 +7229,9 @@ function mostrarConflicto(fila, primeraVez){
   openModal(primeraVez ? 'Ya tenés datos en tu cuenta' : 'Hubo cambios en dos aparatos', `
     <p>${primeraVez ? 'Este aparato y tu cuenta tienen datos distintos.' : 'Mientras este aparato tenía cambios sin subir, otro guardó en tu cuenta.'}
       Elegí con cuáles te quedás: el otro lado se puede recuperar con <b>Deshacer</b>.</p>
-    <div class="cuenta-lados">
-      <button class="btn" data-act="sync-usar-nube">Usar los de la cuenta · ${cuantosRegistros(fila.datos)} registros · ${esc(cuando)}</button>
-      <button class="btn" data-act="sync-usar-local">Usar los de este aparato · ${cuantosRegistros(state)} registros</button>
+    <div class="cuenta-lados cl-2">
+      <button class="btn lado" data-act="sync-usar-local"><b>Este aparato</b><span>${cuantosRegistros(state)} registros</span><em>Conservar este</em></button>
+      <button class="btn lado" data-act="sync-usar-nube"><b>Tu cuenta</b><span>${cuantosRegistros(fila.datos)} registros</span><span>${esc(cuando)}</span><em>Conservar esta</em></button>
     </div>`, null);
 }
 
@@ -7243,7 +7301,9 @@ function pintarSync(){
   if(el){
     const on = syncActiva();
     el.hidden = !on;
-    if(on){ el.dataset.estado = syncEstado; const t = TEXTO_SYNC[syncEstado] || 'Cuenta'; el.title = t; el.setAttribute('aria-label', 'Cuenta: ' + t); }
+    if(on){ el.dataset.estado = syncEstado; const t = TEXTO_SYNC[syncEstado] || 'Cuenta'; el.title = t; el.setAttribute('aria-label', 'Cuenta: ' + t);
+      const corto = { listo:'Sincronizado', pendiente:'Sin subir', subiendo:'Subiendo', 'sin-conexion':'Sin conexión', error:'Error', conflicto:'Elegir datos' }[syncEstado] || 'Cuenta';
+      el.innerHTML = '<i></i><span>' + corto + '</span>'; }
   }
   const c = $('#cuenta-estado');
   if(c) c.textContent = estadoCuentaTexto();
@@ -7468,7 +7528,7 @@ function examenesHTML(){
       ${!viejo && x.horas ? `<div class="examen-semana"><span>Esta semana: <b>${fmtH(a.semanaHechas)} de ${fmtH(Math.round(a.metaSemana * 10) / 10)} h</b></span>
         <span class="muted">${a.semanaHechas >= a.metaSemana ? '✓ al día' : `faltan ${fmtH(Math.round((a.metaSemana - a.semanaHechas) * 10) / 10)} h`}</span></div>` : ''}
       <div class="row mt3 solo-puntero">
-        ${viejo ? '' : `<button class="btn sm btn-vidrio" data-act="edit-examen" data-id="${esc(x.id)}">✎</button>`}
+        ${viejo ? '' : `<button class="btn sm btn-vidrio" data-act="edit-examen" data-id="${esc(x.id)}">${icoT(IT.lapiz,16)}</button>`}
         <button class="btn sm danger btn-vidrio" data-act="del-examen" data-id="${esc(x.id)}" aria-label="Borrar el examen">✕</button>
       </div>
     </div></div>`;
