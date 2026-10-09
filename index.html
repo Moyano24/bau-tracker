@@ -3348,11 +3348,6 @@ function viewInicio(){
   const entrenoHoy = state.gym.sessions.some(s => s.date === hoy);
   const minHoy = state.estudio.entries.filter(x => x.date === hoy)
                    .reduce((a,x) => a + (Number(x.minutes)||0), 0);
-  const avHoy = avanceDia(hoy);                   // de los hábitos que tocan hoy
-
-  const mejorRacha = state.habitos.list
-    .map(x => ({name:x.name, n:habitStreak(x.id)}))
-    .sort((a,b) => b.n - a.n)[0];
 
   const secs = [
     {k:'gym',      label:'Gym',      view:'gym',      r:g.rank,  unit:'pts',    dec:0},
@@ -3384,18 +3379,11 @@ function viewInicio(){
     <div class="card ini-hero">
       <div>
         <h2 class="ini-titulo">${entrenoHoy ? 'Día de gym <em>cumplido</em>' : `Hoy toca <em>${esc(flojo)}</em>`}</h2>
-        <p class="ini-sub">${entrenoHoy ? `Tu grupo más flojo sigue siendo ${esc(flojo)}.` : 'Es tu grupo más flojo.'}${ultimaSes ? ' Última sesión: ' + fmtDate(ultimaSes) + '.' : ''}</p>
+        <p class="ini-sub">${entrenoHoy ? `Tu grupo más flojo sigue siendo ${esc(flojo)}.` : 'Es tu grupo más flojo.'}${ultimaSes ? ' Última sesión: ' + fmtDate(ultimaSes) + '.' : ''}${minHoy ? ` Hoy estudiaste ${minHoy} min.` : ''}</p>
       </div>
       <div class="ini-acc">
         <button class="btn btn-prim" data-act="new-session">${entrenoHoy ? 'Otra sesión' : 'Empezar sesión'}</button>
         <button class="btn" data-act="new-study">Cargar estudio</button>
-      </div>
-      <div class="row wrap mt3">
-        <span class="pill">${entrenoHoy ? 'Entrenaste' : 'Sin entrenar'}</span>
-        <span class="pill">${minHoy} min de estudio</span>
-        <span class="pill">${avHoy.hechos}/${avHoy.programados} hábitos</span>
-        ${mejorRacha && mejorRacha.n > 0
-          ? `<span class="pill">${mejorRacha.n} días · ${esc(mejorRacha.name)}</span>` : ''}
       </div>
       ${panelHTML(secs, avg)}
     </div>
