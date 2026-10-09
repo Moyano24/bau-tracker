@@ -3391,11 +3391,11 @@ function viewInicio(){
         <button class="btn" data-act="new-study">Cargar estudio</button>
       </div>
       <div class="row wrap mt3">
-        <span class="pill">${entrenoHoy ? '✔ Entrenaste' : '○ Sin entrenar'}</span>
+        <span class="pill">${entrenoHoy ? 'Entrenaste' : 'Sin entrenar'}</span>
         <span class="pill">${minHoy} min de estudio</span>
         <span class="pill">${avHoy.hechos}/${avHoy.programados} hábitos</span>
         ${mejorRacha && mejorRacha.n > 0
-          ? `<span class="pill">🔥 ${mejorRacha.n} días · ${esc(mejorRacha.name)}</span>` : ''}
+          ? `<span class="pill">${mejorRacha.n} días · ${esc(mejorRacha.name)}</span>` : ''}
       </div>
       ${panelHTML(secs, avg)}
     </div>
