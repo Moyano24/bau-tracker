@@ -3596,6 +3596,7 @@ function viewGym(){
     </div>
 
     ${rutinasHTML()}
+    ${ejerciciosPropiosHTML()}
     ${suggestHTML(g)}
     ${seriesSemanaHTML()}
 
@@ -4930,6 +4931,107 @@ function rutinasHTML(){
   </div>`;
 }
 
+/* ---- Ejercicios propios: crear, editar y borrar ----
+   Los puntos se calculan al vuelo desde la definición (músculos y peso corporal), así que
+   editarla recalcula también lo ya entrenado. El nombre, en cambio, también queda copiado
+   en cada sesión y rutina: al renombrar hay que actualizar esas copias. */
+const APORTES_SEC = [.3, .4, .5];
+const PESOS_CORPORALES = [[1, 'Sí, todo el cuerpo (dominadas)'], [.65, 'Sí, parcial (flexiones)'], [.35, 'Sí, poco (abdominales)']];
+
+function formEjercicioHTML(ex){
+  const pares = ex ? Object.entries(ex.muscles).sort((a, b) => b[1] - a[1]) : [];
+  const musOpts = sel => MUSCLE_IDS.map(m => `<option value="${m}"${m === sel ? ' selected' : ''}>${esc(MUSCLES[m].label)}</option>`).join('');
+  const aporteOpts = f => [...new Set(APORTES_SEC.concat(f ? [f] : []))].sort((a, b) => a - b)
+    .map(v => `<option value="${v}"${v === f ? ' selected' : ''}>${Math.round(v * 100)}%</option>`).join('');
+  const bw = ex ? ex.bw : null;
+  const pesos = PESOS_CORPORALES.concat(bw && !PESOS_CORPORALES.some(([v]) => v === bw) ? [[bw, `Sí, ${Math.round(bw * 100)}% del cuerpo`]] : []);
+  const secundario = i => { const p = pares[i - 1];
+    return `<div class="fields">
+        <div class="field"><label for="cx-m${i}">Secundario${i === 2 ? ' (opcional)' : ''}</label>
+          <select id="cx-m${i}"><option value="">—</option>${musOpts(p && p[0])}</select></div>
+        <div class="field"><label for="cx-f${i}">Aporte</label>
+          <select id="cx-f${i}">${aporteOpts(p && p[1])}</select></div>
+      </div>`; };
+  return `
+      <div class="field"><label for="cx-name">Nombre</label><input id="cx-name" maxlength="40" value="${ex ? esc(ex.name) : ''}"></div>
+      <div class="field"><label for="cx-m1">Músculo principal (100%)</label><select id="cx-m1">${musOpts(pares[0] && pares[0][0])}</select></div>
+      ${secundario(2)}${pares.length > 2 ? secundario(3) : ''}${pares.length > 3 ? secundario(4) : ''}
+      <div class="field"><label for="cx-bw">Usa peso corporal</label>
+        <select id="cx-bw">
+          <option value="">No, solo peso externo</option>
+          ${pesos.map(([v, t]) => `<option value="${v}"${v === bw ? ' selected' : ''}>${esc(t)}</option>`).join('')}
+        </select></div>
+      <p class="xs muted mt3">El aporte es la parte de los puntos de cada serie que se lleva un músculo: el principal se lleva todo y el secundario, el porcentaje que pongas.${ex ? ' Si cambiás los músculos o el peso corporal, se recalculan también tus entrenamientos anteriores.' : ''}</p>`;
+}
+
+/* Lee el formulario de arriba. Devuelve { name, muscles, bw } o null (y avisa) si no sirve. */
+function leerFormEjercicio(propioId){
+  const name = $('#cx-name').value.trim();
+  if(!name){ toast('Poné un nombre.'); return null; }
+  const igual = allExercises().find(e => e.id !== propioId && e.name.toLowerCase() === name.toLowerCase());
+  if(igual){ toast('Ya hay un ejercicio que se llama así.'); return null; }
+  const muscles = { [$('#cx-m1').value]: 1 };
+  for(const i of [2, 3, 4]){
+    const sel = $('#cx-m' + i), m = sel && sel.value;
+    if(m && !(m in muscles)) muscles[m] = parseFloat($('#cx-f' + i).value);
+  }
+  const bwv = $('#cx-bw').value;
+  return { name, muscles, bw: bwv ? parseFloat(bwv) : null };
+}
+
+/* En cuántos entrenamientos y rutinas aparece un ejercicio. */
+function usoEjercicio(id){
+  const g = state.gym;
+  return {
+    ses: g.sessions.filter(s => s.exercises.some(e => e.exId === id)).length,
+    rut: g.rutinas.filter(r => r.dias.some(d => d.ejercicios.some(e => e.exId === id))).length,
+  };
+}
+function entradasDeEjercicio(id){
+  const g = state.gym;
+  return g.sessions.flatMap(s => s.exercises).concat(g.rutinas.flatMap(r => r.dias.flatMap(d => d.ejercicios)))
+    .filter(e => e.exId === id);
+}
+
+function ejerciciosPropiosHTML(){
+  const cs = state.gym.customExercises;
+  if(!cs.length) return '';
+  return `<div class="card mt4">
+    <h2>Mis ejercicios</h2>
+    <div class="list mt3">${cs.map(c => { const u = usoEjercicio(c.id); return `<div class="item">
+      <div class="row between">
+        <div style="flex:1; min-width:0">
+          <b>${esc(c.name)}</b>
+          <div class="xs muted">${esc(musculosTexto(c.muscles))}${c.bw ? ' · con peso corporal' : ''}</div>
+          <div class="xs dim">${u.ses ? `Usado en ${u.ses} ${u.ses === 1 ? 'entrenamiento' : 'entrenamientos'}` : 'Sin usar todavía'}</div>
+        </div>
+        <button class="btn sm" data-act="edit-custom-ex" data-id="${esc(c.id)}">Editar</button>
+      </div>
+    </div>`; }).join('')}</div>
+  </div>`;
+}
+
+/* Borra un ejercicio propio. Con `destino`, antes pasa a ese todo lo que lo usaba (sesiones,
+   rutinas y su rango de progresión); el aviso con Deshacer lo devuelve tal cual. */
+function borrarEjercicioPropio(ex, destino){
+  const g = state.gym;
+  borrarDeLista(g.customExercises, ex.id, destino ? 'Ejercicio reemplazado y borrado' : 'Ejercicio borrado', {
+    quitar: () => {
+      const tocadas = [], previo = g.progresion ? Object.assign({}, g.progresion) : null;
+      if(destino){
+        entradasDeEjercicio(ex.id).forEach(e => { tocadas.push([e, e.name]); e.exId = destino.id; e.name = destino.name; });
+        if(g.progresion && g.progresion[ex.id] && !g.progresion[destino.id]) g.progresion[destino.id] = g.progresion[ex.id];
+      }
+      if(g.progresion) delete g.progresion[ex.id];
+      return { tocadas, previo };
+    },
+    devolver: (item, r) => {
+      r.tocadas.forEach(([e, nombre]) => { e.exId = item.id; e.name = nombre; });
+      if(r.previo) g.progresion = r.previo; else delete g.progresion;
+    },
+  });
+}
+
 /* Sugerencia de entrenamiento: prioriza déficit de puntos y días sin estímulo.
    El botón abre el modal de sesión ya cargado con los ejercicios propuestos. */
 let suggestion = [];
@@ -5481,9 +5583,9 @@ function openSessionModal(id){
 }
 
 /* Todos los ejercicios como <option>, agrupados por músculo principal. */
-function opcionesEjercicios(){
+function opcionesEjercicios(excluir){
   return MUSCLE_IDS.map(mid => {
-    const list = allExercises().filter(e => primaryMuscle(e) === mid);
+    const list = allExercises().filter(e => e.id !== excluir && primaryMuscle(e) === mid);
     if(!list.length) return '';
     return `<optgroup label="${esc(MUSCLES[mid].label)}">${
       list.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</optgroup>`;
@@ -6412,33 +6514,12 @@ function handleAction(act, btn, ev){
     break;
 
   case 'new-custom-ex': {
-    const musOpts = MUSCLE_IDS.map(m => `<option value="${m}">${esc(MUSCLES[m].label)}</option>`).join('');
     // Guardo el draft actual: este modal pisa el de sesión y hay que volver.
     const pending = draft;
-    openModal('Ejercicio propio', `
-      <div class="field"><label for="cx-name">Nombre</label><input id="cx-name" maxlength="40"></div>
-      <div class="field"><label for="cx-m1">Músculo principal (100%)</label><select id="cx-m1">${musOpts}</select></div>
-      <div class="fields">
-        <div class="field"><label for="cx-m2">Secundario (opcional)</label>
-          <select id="cx-m2"><option value="">—</option>${musOpts}</select></div>
-        <div class="field"><label for="cx-f2">Aporte</label>
-          <select id="cx-f2"><option value="0.3">30%</option><option value="0.4">40%</option>
-            <option value="0.5">50%</option></select></div>
-      </div>
-      <div class="field"><label for="cx-bw">Usa peso corporal</label>
-        <select id="cx-bw">
-          <option value="">No, solo peso externo</option>
-          <option value="1">Sí, todo el cuerpo (dominadas)</option>
-          <option value="0.65">Sí, parcial (flexiones)</option>
-          <option value="0.35">Sí, poco (abdominales)</option>
-        </select></div>`, () => {
-      const name = $('#cx-name').value.trim();
-      if(!name){ toast('Poné un nombre.'); return false; }
-      const muscles = { [$('#cx-m1').value]: 1 };
-      const m2 = $('#cx-m2').value;
-      if(m2 && m2 !== $('#cx-m1').value) muscles[m2] = parseFloat($('#cx-f2').value);
-      const bwv = $('#cx-bw').value;
-      const nuevo = { id:'cx-'+uid(), name, muscles, bw: bwv ? parseFloat(bwv) : null };
+    openModal('Ejercicio propio', formEjercicioHTML(), () => {
+      const datos = leerFormEjercicio();
+      if(!datos) return false;
+      const nuevo = { id:'cx-'+uid(), ...datos };
       state.gym.customExercises.push(nuevo);
       save();
       // Vuelvo al modal de sesión con el ejercicio ya agregado.
@@ -6447,6 +6528,37 @@ function handleAction(act, btn, ev){
       openModal('Nuevo entrenamiento', sessionFormHTML(), saveSession);
       return false;   // el openModal de arriba ya reemplazó el diálogo
     }, 'Crear y agregar');
+    break;
+  }
+  case 'edit-custom-ex': {
+    const ex = state.gym.customExercises.find(c => c.id === id);
+    if(!ex) break;
+    openModal('Editar ejercicio', formEjercicioHTML(ex) +
+      `<button type="button" class="btn danger mt3" data-act="del-custom-ex" data-id="${esc(ex.id)}">Borrar ejercicio</button>`, () => {
+      const datos = leerFormEjercicio(ex.id);
+      if(!datos) return false;
+      const renombrado = datos.name !== ex.name;
+      Object.assign(ex, datos);
+      if(renombrado) entradasDeEjercicio(ex.id).forEach(e => { e.name = ex.name; });
+      save();
+      toast('Ejercicio actualizado');
+    });
+    break;
+  }
+  case 'del-custom-ex': {
+    const ex = state.gym.customExercises.find(c => c.id === id);
+    if(!ex) break;
+    const u = usoEjercicio(id);
+    if(!u.ses && !u.rut){ closeModal(); borrarEjercicioPropio(ex, null); break; }
+    const usos = [u.ses && `${u.ses} ${u.ses === 1 ? 'entrenamiento' : 'entrenamientos'}`,
+                  u.rut && `${u.rut} ${u.rut === 1 ? 'rutina' : 'rutinas'}`].filter(Boolean).join(' y ');
+    openModal('Reemplazar y borrar', `
+      <p style="margin-bottom:var(--s3)">Usaste «${esc(ex.name)}» en ${usos}. Elegí con qué ejercicio querés que queden esos registros: sus puntos pasan a contar para los músculos del nuevo.</p>
+      <div class="field"><label for="cx-reemplazo">Reemplazar por</label><select id="cx-reemplazo">${opcionesEjercicios(ex.id)}</select></div>`, () => {
+      const destino = exDef($('#cx-reemplazo').value);
+      if(!destino || destino.id === ex.id) return false;
+      borrarEjercicioPropio(ex, destino);
+    }, 'Reemplazar y borrar', true);
     break;
   }
 
