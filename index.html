@@ -794,7 +794,7 @@ button.hab-nom{cursor:pointer}
 .sel-cab b{font-family:var(--font-display); font-size:var(--t-lg)}
 .sel-cab .btn{min-height:40px}
 .sel-barra{
-  position:sticky; bottom:calc(72px + env(safe-area-inset-bottom)); z-index:35;
+  position:sticky; bottom:calc(72px + env(safe-area-inset-bottom)); z-index:41;
   display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--s2); margin-top:var(--s4); padding:var(--s3);
   background:var(--surface); border:1px solid var(--line); border-radius:var(--r3);
 }
@@ -1100,6 +1100,13 @@ body.reloj-abierto{overflow:hidden}
   .tabs{transition:scale .15s ease-out}
   .tabs.apretada{scale:1.03}
   .tabs.apretada .tab-ind{scale:1.08 1.12; background:color-mix(in srgb, var(--text) 16%, transparent)}
+  /* Efecto de borde al scrollear, abajo (el "Scroll Edge Effect - Soft" del kit de iOS 26): lo que
+     pasa por detrás de la barra se desenfoca y se funde con el fondo, en vez de leerse a través del vidrio. */
+  body::after{content:""; position:fixed; left:0; right:0; bottom:0; z-index:39; pointer-events:none;
+    height:calc(96px + env(safe-area-inset-bottom, 0px));
+    -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+    background:linear-gradient(transparent, color-mix(in srgb, var(--bg) 72%, transparent) 55%, var(--bg));
+    -webkit-mask-image:linear-gradient(transparent, #000 55%); mask-image:linear-gradient(transparent, #000 55%)}
   main{padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px))}
   #toast{bottom:calc(86px + env(safe-area-inset-bottom, 0px))}
   .sel-barra{bottom:calc(84px + env(safe-area-inset-bottom, 0px))}
@@ -1116,7 +1123,7 @@ body.reloj-abierto{overflow:hidden}
 @media (prefers-reduced-transparency:reduce){
   .topbar::before{background:var(--bg); -webkit-mask-image:none; mask-image:none} .tabs, .reloj-caja{background:var(--surface)} .reloj{background:var(--bg)}
   .timer-pill, #toast{background:var(--line-fuerte)}
-  .topbar::before, .tabs, .reloj, .reloj-caja, .timer-pill, #toast{-webkit-backdrop-filter:none; backdrop-filter:none}
+  .topbar::before, .tabs, .reloj, .reloj-caja, .timer-pill, #toast, body::after{-webkit-backdrop-filter:none; backdrop-filter:none}
 }
 
 /* ---- Entradas y salidas ----
@@ -1299,6 +1306,9 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
 .btn, .btn.sm, .seg button, .filtro-chip, .cat-chip, .reloj-chip, .rir button, .tira-titulo .btn, .nav-per .btn,
 .sel-cab .btn, .acciones-cli .btn, .prog-rango .btn, .cat-borrar, .ico-btn, .imp-incluir{min-height:var(--toque)}
 .btn.sm, .nav-per .btn, .tira-titulo .btn, .cat-borrar{min-width:var(--toque)}
+/* Los botones de texto comunes miden 50 de alto: el "Button - Liquid Glass - Text" Large del kit de
+   iOS 26. Los chicos (.sm) y los círculos de solo ícono siguen en 44. */
+.btn:not(.sm):not(.btn-vidrio){min-height:50px}
 .chk.sm, .saltar{width:var(--toque); height:var(--toque)}
 .hab-nom, button.hab-abrir{min-height:var(--toque)}
 /* Los botones de solo ícono (✕, ‹ ›, ←, ✎): círculos de vidrio de 44, como el de volver de iOS. */
