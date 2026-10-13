@@ -1206,6 +1206,11 @@ details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; 
 .imp-nuevo select + select{margin-top:var(--s2)}
 .imp-incluir{display:flex; align-items:center; gap:var(--s2); margin-top:var(--s3); font-size:var(--t-sm); min-height:40px}
 .imp-incluir input{width:20px; height:20px; flex:none}
+/* Interruptor de iOS: con el atributo `switch`, Safari (iOS 17.4+) dibuja el nativo de Apple, con
+   sus medidas y su animación; los demás navegadores muestran una casilla. Texto a la izquierda e
+   interruptor a la derecha, como en Ajustes. Sin tamaño forzado: el 20×20 aplastaba el nativo. */
+.imp-incluir.ios-sw{justify-content:space-between}
+.imp-incluir input[switch]{width:auto; height:auto}
 .min-dias{display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:var(--s1); margin-top:var(--s2)}
 .min-dias[hidden], .min-dia[hidden]{display:none}
 .min-dia{display:flex; flex-direction:column; align-items:center; gap:2px; font-size:var(--t-xs); font-weight:700; color:var(--muted)}
@@ -6198,7 +6203,7 @@ function tiempoFormHTML(hb){
   return `<div class="field" id="hb-tiempo" ${tipoDraft === 'tiempo' ? '' : 'hidden'}>
       <label for="hb-min">Minutos por día</label>
       <input id="hb-min" type="number" inputmode="numeric" min="1" max="${MAX_MIN_HABITO}" step="1" value="${md ? '' : base}" placeholder="30" ${md ? 'disabled' : ''}>
-      <label class="imp-incluir"><input type="checkbox" id="hb-min-var" ${md ? 'checked' : ''}> Distinto según el día</label>
+      <label class="imp-incluir ios-sw"><span>Distinto según el día</span><input type="checkbox" switch id="hb-min-var" ${md ? 'checked' : ''}></label>
       <div class="min-dias" id="hb-min-dias" ${md ? '' : 'hidden'}>${INICIAL_DIA.map((l, i) => `
         <label class="min-dia" data-dia="${i}"><span>${l}</span>
           <input type="number" inputmode="numeric" min="0" max="${MAX_MIN_HABITO}" step="1" id="hb-md-${i}" aria-label="Minutos el ${NOMBRES_DIA[i]}"
@@ -6331,7 +6336,7 @@ function revisionHTML(r){
             <input id="imp-fecha-${i}" type="date" max="${iso()}" value="${s.date || iso()}" data-imp-fecha="${i}"></div>
           ${dup ? '<p class="imp-aviso">Ya hay un entrenamiento igual ese día: quedó sin marcar.</p>' : ''}
           <ul class="imp-lista">${s.exercises.map(e => fila(e.name, e.exId, resumenSeries(e.sets))).join('')}</ul>
-          <label class="imp-incluir"><input type="checkbox" data-imp-incluir="${i}" ${dup ? '' : 'checked'}> Cargar este entrenamiento</label>
+          <label class="imp-incluir ios-sw"><span>Cargar este entrenamiento</span><input type="checkbox" switch data-imp-incluir="${i}" ${dup ? '' : 'checked'}></label>
         </div>`;
       }).join('');
   const nuevos = r.nuevos.length ? `<div class="exbox"><b>Ejercicios nuevos</b>
