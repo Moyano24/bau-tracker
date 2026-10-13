@@ -1138,6 +1138,18 @@ body.reloj-abierto{overflow:hidden}
 .examen .bar{margin-top:var(--s2)}
 .examen-semana{display:flex; justify-content:space-between; gap:var(--s2); margin-top:var(--s2); font-size:var(--t-xs)}
 .examen.cerca{border:2px solid var(--line-fuerte)}
+/* Temas del examen: un renglón por tema, con un punto por pomodoro (lleno = hecho). */
+.temas{margin-top:var(--s3); display:flex; flex-direction:column; gap:var(--s1)}
+.tema{display:flex; align-items:center; gap:var(--s2); min-height:44px; font-size:var(--t-sm)}
+.tema-check{flex:none; width:20px; height:20px; border-radius:50%; border:1.5px solid var(--line-fuerte);
+  display:grid; place-items:center}
+.tema.listo .tema-check{background:var(--good); border-color:var(--good); color:var(--bg)}
+.tema-n{flex:1; min-width:0; overflow-wrap:anywhere}
+.tema.listo .tema-n{text-decoration:line-through; color:var(--muted)}
+.tema-pomos{flex:none; display:flex; gap:3px; font-size:var(--t-xs); color:var(--muted)}
+.tema-pomos i{width:8px; height:8px; border-radius:50%; border:1.5px solid var(--line-fuerte)}
+.tema-pomos i.hecho{background:var(--accent); border-color:var(--accent)}
+.tema-fila{display:grid; grid-template-columns:minmax(0,1fr) 72px 44px; gap:var(--s2); align-items:center; margin-top:var(--s2)}
 details.pasados summary{cursor:pointer; font-size:var(--t-sm); font-weight:600; color:var(--muted); margin-top:var(--s3); min-height:32px}
 /* La franja de progreso baja con el tiempo que queda. Se actualiza por
    transform, no por width, y el valor lo escribe el JS en cada tic. */
@@ -2221,12 +2233,30 @@ function normalizarEstudio(e){
   e.examenes = e.examenes.filter(x => x && typeof x === 'object' && typeof x.materia === 'string' && x.materia.trim() && fechaValida(x.fecha))
     .map(x => {
       const horas = Number(x.horas);
-      return { id: String(x.id || uid()), materia: x.materia.trim().slice(0, 40),
+      const ex = { id: String(x.id || uid()), materia: x.materia.trim().slice(0, 40),
                tipo: x.tipo in TIPOS_EXAMEN ? x.tipo : 'parcial', fecha: x.fecha,
                horas: Number.isFinite(horas) && horas > 0 ? Math.min(Math.round(horas * 2) / 2, 500) : 0,
                desde: fechaValida(x.desde) && x.desde <= x.fecha ? x.desde : x.fecha };
+      const temas = normalizarTemas(x.temas);
+      if(temas.length) ex.temas = temas;
+      return ex;
     });
   return e;
+}
+/* Temas de un examen: sin nombre o repetidos se descartan; los pomodoros van de 1 a 20. */
+function normalizarTemas(lista){
+  if(!Array.isArray(lista)) return [];
+  const vistos = new Set(), r = [];
+  for(const t of lista){
+    if(!t || typeof t !== 'object' || typeof t.n !== 'string') continue;
+    const n = t.n.replace(/\s+/g, ' ').trim().slice(0, LARGO_TEMA), clave = normMateria(n);
+    if(!n || vistos.has(clave)) continue;
+    const est = Math.round(Number(t.est));
+    vistos.add(clave);
+    r.push({ id: String(t.id || uid()), n, est: Number.isFinite(est) ? Math.min(Math.max(est, 1), TEMA_EST_MAX) : 1 });
+    if(r.length >= TEMAS_MAX) break;
+  }
+  return r;
 }
 
 /* Los datos de seguimiento que lleguen rotos se descartan: un teléfono que no es texto,
@@ -2899,6 +2929,33 @@ function cuandoExamen(dias){ return dias === 0 ? 'hoy' : dias === 1 ? 'mañana' 
 function proximoExamen(){
   const hoy = iso();
   return (state.estudio.examenes || []).filter(x => x.fecha >= hoy).sort((a, b) => a.fecha.localeCompare(b.fecha))[0] || null;
+}
+
+/* Temas de un examen, como las tareas de Pomofocus: cada uno con los pomodoros que le
+   calculás (`est`). Los hechos NO se guardan: salen del historial (pomodoros de esa materia
+   y ese tema, sin importar mayúsculas ni acentos, entre "contar desde" y el examen). Al
+   llegar a lo estimado, el tema se tacha solo. */
+const TEMAS_MAX = 20, TEMA_EST_MAX = 20, LARGO_TEMA = 80;
+function temasExamen(ex){
+  const m = normMateria(ex.materia);
+  return (ex.temas || []).map(t => {
+    const n = normMateria(t.n);
+    const hechos = state.estudio.entries.filter(e => e.fuente === 'pomodoro' && normMateria(e.subject) === m
+      && normMateria(e.topic) === n && e.date >= ex.desde && e.date <= ex.fecha).length;
+    return { id: t.id, n: t.n, est: t.est, hechos, listo: hechos >= t.est };
+  });
+}
+/* El tema de un examen que viene (el más cercano primero) con esa materia y ese nombre, o null. */
+function temaDePomo(materia, tema){
+  const m = normMateria(materia), n = normMateria(tema), hoy = iso();
+  if(!m || !n) return null;
+  const exs = (state.estudio.examenes || []).filter(x => x.fecha >= hoy && normMateria(x.materia) === m)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  for(const ex of exs){
+    const t = temasExamen(ex).find(x => normMateria(x.n) === n);
+    if(t) return { ex, t };
+  }
+  return null;
 }
 
 function computeEstudio(){
@@ -6498,6 +6555,22 @@ function handleAction(act, btn, ev){
     break;
   }
   case 'pomo-terminar': terminarPomo(); break;
+  case 'tema-pomo': {
+    const x = (state.estudio.examenes || []).find(e => e.id === id), t = x && (x.temas || []).find(e => e.id === btn.dataset.tema);
+    if(!t) break;
+    if(pomo){ toast('Ya hay un pomodoro andando.'); break; }
+    pomoForm.materia = x.materia; pomoForm.tema = t.n;
+    if(iniciarPomo(x.materia, t.n, pomoForm.foco, pomoForm.descanso)) abrirReloj({ modo: 'corriendo', fuente: 'pomo' });
+    break;
+  }
+  case 'tema-mas': {
+    const caja = $('#ex-temas');
+    if(caja.children.length >= TEMAS_MAX){ toast(`Hasta ${TEMAS_MAX} temas por examen.`); break; }
+    caja.insertAdjacentHTML('beforeend', temaFilaHTML(null));
+    caja.lastElementChild.querySelector('.tema-nom').focus();
+    break;
+  }
+  case 'tema-quitar': btn.closest('.tema-fila').remove(); break;
   case 'cuenta-salir': salirCuenta(); break;
   case 'atajo-crear': {
     btn.disabled = true;
@@ -6719,16 +6792,30 @@ function handleAction(act, btn, ev){
           <input id="ex-horas" type="number" min="0" max="500" step="0.5" inputmode="decimal" value="${x && x.horas ? x.horas : ''}" placeholder="12"></div>
         <div class="field"><label for="ex-desde">Contar las horas desde</label>
           <input id="ex-desde" type="date" value="${x ? x.desde : iso()}"></div>
+      </div>
+      <div class="temas-ed mt4">
+        <div class="row between wrap"><b class="xs">Temas (opcional)</b><span class="xs muted">Pomodoros</span></div>
+        <div id="ex-temas">${(x && x.temas || []).map(temaFilaHTML).join('')}</div>
+        <button type="button" class="btn sm mt3" data-act="tema-mas">+ Tema</button>
+        <p class="xs muted mt3">Calculá cuántos pomodoros le lleva cada tema. Cada pomodoro que hagas con ese tema suma uno; al llegar, se tacha solo.</p>
       </div>`,
     () => {
       const materia = $('#ex-mat').value.trim(), fecha = $('#ex-fecha').value, desde = $('#ex-desde').value || iso();
       const horas = $('#ex-horas').value === '' ? 0 : Number($('#ex-horas').value);
+      const filas = [...document.querySelectorAll('#ex-temas .tema-fila')]
+        .map(f => ({ id: f.dataset.tid || uid(), n: f.querySelector('.tema-nom').value.replace(/\s+/g, ' ').trim(), est: Number(f.querySelector('.tema-est').value) }))
+        .filter(t => t.n);
+      if(filas.some(t => !Number.isInteger(t.est) || t.est < 1 || t.est > TEMA_EST_MAX)){ toast(`Los pomodoros de cada tema van de 1 a ${TEMA_EST_MAX}.`); return false; }
+      if(new Set(filas.map(t => normMateria(t.n))).size < filas.length){ toast('Hay dos temas con el mismo nombre.'); return false; }
+      const temas = normalizarTemas(filas);
       if(!materia){ toast('Falta la materia.'); return false; }
       if(!fechaValida(fecha)){ toast('Poné la fecha del examen.'); return false; }
       if(!Number.isFinite(horas) || horas < 0 || horas > 500){ toast('Las horas van de 0 a 500.'); return false; }
       if(!fechaValida(desde) || desde > fecha){ toast('"Contar desde" tiene que ser una fecha anterior al examen.'); return false; }
       const datos = { materia: materia.slice(0, 40), tipo: $('#ex-tipo').value in TIPOS_EXAMEN ? $('#ex-tipo').value : 'parcial',
                       fecha, horas: Math.round(horas * 2) / 2, desde };
+      if(temas.length) datos.temas = temas;
+      else if(x) delete x.temas;
       if(x) Object.assign(x, datos);
       else (state.estudio.examenes = state.estudio.examenes || []).push({ id: uid(), ...datos });
       save();
@@ -7638,8 +7725,9 @@ function registrarPomo(p, minutos){
   const e = { id: uid(), date: iso(new Date(p.inicio)), subject: p.materia, topic: p.tema || '', minutes: minutos, fuente: 'pomodoro' };
   state.estudio.entries.push(e);
   save();
-  const raiz = state;
-  toast(`Pomodoro guardado: ${minutos} min de ${p.materia}`, { accion: { texto: 'Deshacer', fn: () => {
+  const raiz = state, tm = temaDePomo(p.materia, p.tema);
+  const tema = !tm ? '' : tm.t.hechos === tm.t.est ? ` · ${tm.t.n}: tema listo` : tm.t.hechos < tm.t.est ? ` · ${tm.t.n}: ${tm.t.hechos} de ${tm.t.est}` : '';
+  toast(`Pomodoro guardado: ${minutos} min de ${p.materia}${tema}`, { accion: { texto: 'Deshacer', fn: () => {
     if(state !== raiz) return;
     const i = state.estudio.entries.findIndex(x => x.id === e.id);
     if(i >= 0){ state.estudio.entries.splice(i, 1); save(); render(); }
@@ -7743,6 +7831,7 @@ function examenesHTML(){
       ${x.horas ? `<div class="bar" role="img" aria-label="${fmtH(a.hechas)} de ${fmtH(x.horas)} horas"><i style="--p:${p.toFixed(3)}"></i></div>` : ''}
       ${!viejo && x.horas ? `<div class="examen-semana"><span>Esta semana: <b>${fmtH(a.semanaHechas)} de ${fmtH(Math.round(a.metaSemana * 10) / 10)} h</b></span>
         <span class="muted">${a.semanaHechas >= a.metaSemana ? '✓ al día' : `faltan ${fmtH(Math.round((a.metaSemana - a.semanaHechas) * 10) / 10)} h`}</span></div>` : ''}
+      ${temasHTML(x, viejo)}
       <div class="row mt3 solo-puntero">
         ${viejo ? '' : `<button class="btn sm btn-vidrio" data-act="edit-examen" data-id="${esc(x.id)}">${icoT(IT.lapiz,16)}</button>`}
         <button class="btn sm danger btn-vidrio" data-act="del-examen" data-id="${esc(x.id)}" aria-label="Borrar el examen">✕</button>
@@ -7757,9 +7846,45 @@ function examenesHTML(){
   </div>`;
 }
 
+/* Una fila del editor de temas (en el formulario del examen). */
+function temaFilaHTML(t){
+  return `<div class="tema-fila"${t ? ` data-tid="${esc(t.id)}"` : ''}>
+    <input class="tema-nom" maxlength="${LARGO_TEMA}" value="${t ? esc(t.n) : ''}" placeholder="Límites" aria-label="Tema">
+    <input class="tema-est" type="number" min="1" max="${TEMA_EST_MAX}" step="1" inputmode="numeric" value="${t ? t.est : 2}" aria-label="Pomodoros que le calculás">
+    <button type="button" class="btn sm danger btn-vidrio" data-act="tema-quitar" aria-label="Quitar el tema">✕</button>
+  </div>`;
+}
+
+/* Los temas dentro de la fila del examen:los pomodoros hechos de los estimados (puntos si
+   son pocos) y ▶ para arrancar un pomodoro de ese tema. Uno terminado queda tachado. */
+function temasHTML(x, viejo){
+  const ts = temasExamen(x);
+  if(!ts.length) return '';
+  const listos = ts.filter(t => t.listo).length, faltan = ts.reduce((a, t) => a + Math.max(0, t.est - t.hechos), 0);
+  return `<div class="temas">
+    <div class="xs muted">Temas · ${listos} de ${ts.length} ${ts.length === 1 ? 'listo' : 'listos'}${faltan ? ` · ${faltan === 1 ? 'falta 1 pomodoro' : `faltan ${faltan} pomodoros`}` : ''}</div>
+    ${ts.map(t => {
+      const cuenta = `${t.hechos} de ${t.est} pomodoros`;
+      const marcas = t.est <= 10
+        ? Array.from({ length: Math.max(t.est, Math.min(t.hechos, 10)) }, (_, k) => `<i${k < t.hechos ? ' class="hecho"' : ''}></i>`).join('')
+        : `<span>${t.hechos}/${t.est}</span>`;
+      return `<div class="tema${t.listo ? ' listo' : ''}">
+        <span class="tema-check" aria-hidden="true">${t.listo ? icoT(IT.check, 14) : ''}</span>
+        <span class="tema-n">${esc(t.n)}</span>
+        <span class="tema-pomos" role="img" aria-label="${esc(cuenta)}">${marcas}</span>
+        ${viejo || pomo ? '' : `<button type="button" class="btn sm btn-vidrio" data-act="tema-pomo" data-id="${esc(x.id)}" data-tema="${esc(t.id)}"
+          aria-label="Empezar un pomodoro de ${esc(t.n)}">${icoT(IT.play, 14)}</button>`}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function pomoHTML(){
   if(!pomo){
     const materias = [...new Set(state.estudio.entries.map(e => e.subject))];
+    // Los temas que faltan de los exámenes que vienen, para elegirlos en el campo Tema.
+    const temas = [...new Set((state.estudio.examenes || []).filter(x => x.fecha >= iso())
+      .flatMap(x => temasExamen(x).filter(t => !t.listo).map(t => t.n)))];
     // Si con la ruedita se eligió otra duración, aparece como un botón más (marcado).
     const seg = (clave, base) => { const opciones = base.includes(pomoForm[clave]) ? base : base.concat([pomoForm[clave]]);
       return `<div class="seg" role="group" aria-label="${clave === 'foco' ? 'Duración del foco' : 'Duración del descanso'}">${opciones.map(m =>
@@ -7772,7 +7897,8 @@ function pomoHTML(){
           <input id="pomo-mat" list="pomo-materias" maxlength="40" value="${esc(pomoForm.materia || '')}" placeholder="Matemática">
           <datalist id="pomo-materias">${materias.map(m => `<option value="${esc(m)}">`).join('')}</datalist></div>
         <div class="field"><label for="pomo-tema">Tema (opcional)</label>
-          <input id="pomo-tema" maxlength="80" value="${esc(pomoForm.tema || '')}" placeholder="Límites"></div>
+          <input id="pomo-tema" list="pomo-temas" maxlength="80" value="${esc(pomoForm.tema || '')}" placeholder="Límites">
+          <datalist id="pomo-temas">${temas.map(t => `<option value="${esc(t)}">`).join('')}</datalist></div>
       </div>
       <div class="pomo-opc">${seg('foco', POMO_FOCO)}${seg('descanso', POMO_DESC)}</div>
       <div class="row wrap mt3">
@@ -7781,10 +7907,11 @@ function pomoHTML(){
       </div>
     </div>`;
   }
-  const resta = restanteMs(pomo), foco = pomo.fase === 'foco';
+  const resta = restanteMs(pomo), foco = pomo.fase === 'foco', tm = foco && temaDePomo(pomo.materia, pomo.tema);
   return `<div class="card mt4" id="pomo">
     <div class="row between wrap"><h2>Pomodoro</h2><span class="pill">${foco ? 'Foco' : 'Descanso'}</span></div>
     <p class="pomo-fase mt3">${foco ? `${esc(pomo.materia)}${pomo.tema ? ' · ' + esc(pomo.tema) : ''}` : 'Descanso: levantate, tomá agua'}</p>
+    ${tm ? `<p class="xs muted pomo-fase">Pomodoro ${tm.t.hechos + 1} de ${tm.t.est} de este tema</p>` : ''}
     <div class="pomo-reloj" id="pomo-num" role="timer" aria-live="off">${fmtTiempo(resta)}</div>
     <p class="pomo-fase muted" id="pomo-pausa" ${pomo.pausa != null ? '' : 'hidden'}>En pausa</p>
     <div class="bar mt3"><i id="pomo-barra" style="--p:${(resta / pomo.total).toFixed(3)}"></i></div>
