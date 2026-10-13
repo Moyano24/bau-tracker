@@ -432,6 +432,11 @@ td{padding:var(--s2); border-top:1px solid var(--line)}
 @media (min-width:900px){ .resumen-semana .stats{grid-template-columns:repeat(4, minmax(0, 1fr))} }
 .resumen-semana .stat span{display:block; margin:var(--s1) 0 0}
 .resumen-semana .stat span.sube{color:var(--good)}
+/* Resumen al guardar un entrenamiento: los mismos mosaicos, dentro de la hoja. */
+.resumen-ses{--tinta:var(--accent)}
+.resumen-ses .stats{grid-template-columns:repeat(2, minmax(0, 1fr)); margin-top:0}
+@media (min-width:900px){ .resumen-ses .stats{grid-template-columns:repeat(4, minmax(0, 1fr))} }
+.resumen-ses .sube{color:var(--good)}
 
 /* ---- Mapa corporal ---- */
 .bodies{display:flex; gap:var(--s5); justify-content:center; flex-wrap:wrap}
@@ -2714,17 +2719,63 @@ function tendenciaEjHTML(exId, sinId = null){
   return v.length < 2 ? '' : sparklineHTML(v, `1RM estimado: de ${fmtKg(v[0])} a ${fmtKg(v[v.length - 1])} kg en las últimas ${v.length} sesiones`);
 }
 
-function esRecord(sesion, ex){
+/* Lo mejor que hiciste en un ejercicio ANTES de esa sesión: el 1RM estimado y el mayor
+   peso externo levantado (en una serie con reps). */
+function marcasPrevias(sesion, exId){
   const todas = state.gym.sessions;
   const pos = todas.findIndex(s => s.id === sesion.id);
   const limite = pos < 0 ? todas.length : pos;
-  let previo = 0;
+  let e1rm = 0, kg = 0;
   todas.forEach((s, k) => {
     if(s.id === sesion.id) return;
     if(!(s.date < sesion.date || (s.date === sesion.date && k < limite))) return;
-    for(const e of s.exercises) if(e.exId === ex.exId) previo = Math.max(previo, mejorE1RM(e.exId, e.sets));
+    for(const e of s.exercises) if(e.exId === exId){
+      e1rm = Math.max(e1rm, mejorE1RM(e.exId, e.sets));
+      kg = Math.max(kg, ...e.sets.filter(x => Number(x.reps) > 0).map(x => Number(x.kg) || 0));
+    }
   });
+  return { e1rm, kg };
+}
+function esRecord(sesion, ex){
+  const previo = marcasPrevias(sesion, ex.exId).e1rm;
   return previo > 0 && mejorE1RM(ex.exId, ex.sets) > previo + 1e-9;
+}
+
+/* Volumen: carga × reps de cada serie, con la misma carga que el 1RM (peso corporal incluido). */
+function volumenEj(exId, sets){
+  const def = exDef(exId), bw = def && def.bw ? state.profile.bodyweightKg * def.bw : 0;
+  return (sets || []).reduce((a, s) => {
+    const reps = Number(s.reps) || 0;
+    return reps > 0 ? a + reps * ((Number(s.kg) || 0) + bw) : a;
+  }, 0);
+}
+
+/* El resumen de un entrenamiento contra tu historial, sin contarse a sí mismo. Función pura.
+   Los récords van por separado, como en Liftosaur: el 1RM estimado puede subir con más
+   reps al mismo peso, y el peso máximo solo subiendo la carga. La primera vez no es récord. */
+function resumenSesion(sesion){
+  const ejercicios = sesion.exercises.map(ex => {
+    const sets = ex.sets.filter(x => Number(x.reps) > 0);
+    const prev = marcasPrevias(sesion, ex.exId), uv = ultimaVez(ex.exId, sesion.date, sesion.id);
+    const e1rm = mejorE1RM(ex.exId, sets), kg = Math.max(0, ...sets.map(x => Number(x.kg) || 0));
+    return {
+      exId: ex.exId, name: ex.name, series: sets.length, texto: resumenSeries(sets),
+      vol: volumenEj(ex.exId, sets), volAntes: uv ? volumenEj(ex.exId, uv.sets) : null,
+      recE1RM: prev.e1rm > 0 && e1rm > prev.e1rm + 1e-9 ? { antes: prev.e1rm, ahora: e1rm } : null,
+      recKg: prev.kg > 0 && kg > prev.kg + 1e-9 ? { antes: prev.kg, ahora: kg } : null,
+    };
+  });
+  // Las series de la semana de esa sesión, para los músculos que trabajó como principales.
+  const lunes = iso(lunesDe(parseISO(sesion.date))), base = seriesSemana(lunes, sesion.id);
+  const musculos = Object.entries(seriesDeSesion(sesion, true))
+    .sort((a, b) => b[1] - a[1])
+    .map(([mus, n]) => ({ mus, suma: n, total: base[mus] + n, obj: objetivoSeries(mus) }));
+  return {
+    ejercicios, musculos,
+    series: ejercicios.reduce((a, e) => a + e.series, 0),
+    vol: ejercicios.reduce((a, e) => a + e.vol, 0),
+    records: ejercicios.reduce((a, e) => a + (e.recE1RM ? 1 : 0) + (e.recKg ? 1 : 0), 0),
+  };
 }
 
 function computeGym(){
@@ -2798,16 +2849,25 @@ function computeGym(){
    (AAAA-MM-DD). Una serie vale 1 para el músculo principal (aporte ≥ 1) y ½ para cada
    secundario: el press de banca son series de pecho y media serie de tríceps. */
 const objetivoSeries = mus => SERIES_OBJ[mus] || SERIES_OBJ.def;
-function seriesSemana(desde = iso(lunesDe(new Date()))){
+function seriesSemana(desde = iso(lunesDe(new Date())), sinId = null){
   const hasta = iso(addDays(parseISO(desde), 6)), r = {};
   MUSCLE_IDS.forEach(id => { r[id] = 0; });
   for(const s of state.gym.sessions){
-    if(s.date < desde || s.date > hasta) continue;
-    for(const ex of s.exercises){
-      const def = exDef(ex.exId);
-      if(!def) continue;
-      const n = ex.sets.filter(x => Number(x.reps) > 0).length;
-      for(const [mus, f] of Object.entries(def.muscles)) if(mus in r) r[mus] += n * (f >= 1 ? 1 : .5);
+    if(s.id === sinId || s.date < desde || s.date > hasta) continue;
+    for(const [mus, n] of Object.entries(seriesDeSesion(s))) r[mus] += n;
+  }
+  return r;
+}
+/* Las series que una sesión le da a cada músculo (`soloPrincipal`: solo donde aporta 1). */
+function seriesDeSesion(s, soloPrincipal = false){
+  const r = {};
+  for(const ex of s.exercises){
+    const def = exDef(ex.exId);
+    if(!def) continue;
+    const n = ex.sets.filter(x => Number(x.reps) > 0).length;
+    for(const [mus, f] of Object.entries(def.muscles)){
+      if(!MUSCLE_IDS.includes(mus) || (soloPrincipal && f < 1)) continue;
+      r[mus] = (r[mus] || 0) + n * (f >= 1 ? 1 : .5);
     }
   }
   return r;
@@ -5560,11 +5620,12 @@ function openModal(title, bodyHTML, onSave, saveLabel = 'Guardar', peligro = fal
   const first = $('#modal-body input, #modal-body select, #modal-body textarea');
   if(first) first.focus();
 }
-function closeModal(v0){
+function closeModal(v0, despues){
   if($('#backdrop').hidden) return;
   cerrarHoja(v0, () => {
     modalSave = null;
     if(lastFocus && lastFocus.focus) lastFocus.focus();
+    if(despues) despues();
   });
 }
 
@@ -5710,14 +5771,59 @@ function saveSession(){
   const records = draft.exercises.filter(ex => esRecord(draft, ex)).map(ex => ex.name);
   const before = computeGym();
   const idx = state.gym.sessions.findIndex(s => s.id === draft.id);
+  // Un entrenamiento nuevo termina con su resumen; editar uno viejo, con el aviso de siempre.
+  const resumen = idx < 0 ? resumenSesion(draft) : null;
   if(idx >= 0) state.gym.sessions[idx] = draft; else state.gym.sessions.push(draft);
   save();
   const after = computeGym();
   const delta = after.totalPts - before.totalPts;
+  if(resumen){ resumenPendiente = { r: resumen, puntos: delta, fecha: draft.date }; return true; }
   toast(`Guardado · ${delta >= 0 ? '+' : ''}${fmtNum(delta,1)} puntos de estímulo` +
         (records.length ? ` · Récord en ${records.join(', ')}` : ''));
   return true;
 }
+
+/* ---- Resumen al guardar un entrenamiento nuevo ----
+   Se abre cuando termina de cerrarse el formulario (ver 'save-modal'): una hoja solo
+   para leer, con los récords, el volumen contra la última vez y las series de la semana. */
+let resumenPendiente = null;
+function cambioVolHTML(e){
+  if(e.volAntes === null) return '<span class="muted">primera vez</span>';
+  if(!e.volAntes) return '';
+  const d = Math.round((e.vol - e.volAntes) / e.volAntes * 100);
+  if(!d) return '<span class="muted">igual que la última vez</span>';
+  return `<span class="${d > 0 ? 'sube' : 'muted'}">${d > 0 ? '▲ +' : '▼ '}${d} % de volumen</span>`;
+}
+function resumenSesionHTML({ r, puntos, fecha }){
+  const tiles = [
+    ['Series', r.series, ''], ['Volumen', fmtNum(Math.round(r.vol)), 'kg'],
+    ['Estímulo', (puntos >= 0 ? '+' : '') + fmtNum(puntos, 1), 'pts'], ['Récords', r.records, ''],
+  ];
+  const recs = e => [
+    e.recE1RM && `1RM estimado ${fmtKg(e.recE1RM.antes)} → ${fmtKg(e.recE1RM.ahora)} kg`,
+    e.recKg && `peso máximo ${fmtKg(e.recKg.antes)} → ${fmtKg(e.recKg.ahora)} kg`,
+  ].filter(Boolean);
+  const semana = lunesDe(parseISO(fecha)).getTime() === lunesDe(new Date()).getTime() ? 'esta semana' : 'esa semana';
+  return `<div class="resumen-ses">
+    <div class="stats">${tiles.map(([et, val, suf]) =>
+      `<div class="stat"><small>${et}</small><b>${val}</b>${suf ? `<span>${suf}</span>` : ''}</div>`).join('')}</div>
+    ${r.records ? '' : '<p class="xs muted mt3">Sin récords nuevos esta vez.</p>'}
+    <h3 class="mt4">Contra la última vez</h3>
+    <div class="list mt3">${r.ejercicios.map(e => `<div class="item">
+      <div class="row between wrap"><b>${esc(e.name)}</b><span class="xs">${cambioVolHTML(e)}</span></div>
+      <div class="xs dim">${esc(e.texto)}</div>
+      ${recs(e).map(t => `<div class="xs" style="margin-top:var(--s1)"><span class="pill">Récord</span> ${esc(t)}</div>`).join('')}
+    </div>`).join('')}</div>
+    ${r.musculos.length ? `<h3 class="mt4">Series de ${semana}</h3>
+    <div class="list mt3">${r.musculos.map(m => {
+      const [min, max] = m.obj, n = fmtNum(m.total, m.total % 1 ? 1 : 0);
+      const estado = m.total < min ? `faltan ${fmtNum(min - m.total, (min - m.total) % 1 ? 1 : 0)}` : m.total > max ? 'pasaste el tope' : '✓ en rango';
+      return `<div class="row between xs"><b>${esc(MUSCLES[m.mus].label)}</b>
+        <span class="muted">+${fmtNum(m.suma, m.suma % 1 ? 1 : 0)} → ${n} de ${min}–${max} · ${estado}</span></div>`;
+    }).join('')}</div>` : ''}
+  </div>`;
+}
+function abrirResumenSesion(p){ openModal('Entrenamiento guardado', resumenSesionHTML(p), null); }
 
 /* ==========================================================================
    11. EVENTOS — delegación desde document. Un solo listener para toda la app:
@@ -6300,7 +6406,10 @@ function handleAction(act, btn, ev){
     break;
   }
   case 'save-modal':
-    if(modalSave && modalSave() !== false){ closeModal(); render(); }
+    if(modalSave && modalSave() !== false){
+      const resumen = resumenPendiente; resumenPendiente = null;
+      closeModal(0, resumen ? () => abrirResumenSesion(resumen) : null); render();
+    }
     break;
 
   /* --- gym --- */
