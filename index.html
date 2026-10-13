@@ -439,8 +439,10 @@ td{padding:var(--s2); border-top:1px solid var(--line)}
 .resumen-ses .sube{color:var(--good)}
 
 /* ---- Mapa corporal ---- */
-.bodies{display:flex; gap:var(--s5); justify-content:center; flex-wrap:wrap}
-.body-svg{width:min(200px,46vw); height:auto}
+/* Frente y espalda lado a lado, como en Hevy: uno abajo del otro ocupaban dos pantallas. */
+.bodies{display:flex; gap:var(--s3); justify-content:center}
+.bodies figure{flex:1 1 0; min-width:0; max-width:200px}
+.body-svg{display:block; width:100%; height:auto}
 .silo{pointer-events:none}
 /* El relleno de cada zona lo pone el rango (gradiente del tier) desde el JS.
    La opacidad cuenta la otra mitad de la historia: cuán reciente es el estímulo. */
@@ -610,7 +612,8 @@ td{padding:var(--s2); border-top:1px solid var(--line)}
 
 .legend{display:flex; gap:var(--s3); justify-content:center; flex-wrap:wrap; font-size:var(--t-xs); color:var(--muted)}
 .legend span{display:flex; align-items:center; gap:var(--s1)}
-.sw{width:11px;height:11px;display:inline-block;background:var(--accent)}
+/* Neutro: la leyenda de recencia cuenta la transparencia, no un color (el color es el rango). */
+.sw{width:11px;height:11px;display:inline-block;background:var(--text)}
 .sw.late{animation:pulsez 1.8s ease-in-out infinite}
 
 /* Grilla de músculos: sirve de navegación por teclado y de leyenda con datos.
@@ -717,7 +720,8 @@ td{padding:var(--s2); border-top:1px solid var(--line)}
 }
 .hab-nom{flex:1; min-width:0; background:none; border:0; padding:0; color:inherit; font:inherit; text-align:left}
 button.hab-nom{cursor:pointer}
-.hab-nom b{display:block; font-size:var(--t-md); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+/* Hasta dos renglones: con la llama y los botones al lado, uno solo cortaba nombres comunes ("Sin pantallas d…"). */
+.hab-nom b{display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; font-size:var(--t-md); line-height:1.2; overflow:hidden; overflow-wrap:anywhere}
 .hab-sub{display:block; font-size:var(--t-xs); font-weight:500}
 
 /* El círculo de check. 44px: es lo que más se toca en toda la app. */
@@ -952,7 +956,10 @@ a.btn{text-decoration:none; display:inline-flex; align-items:center; justify-con
 
 /* Series de la semana: una pista con la franja del objetivo marcada y el avance encima. */
 .series{display:grid; gap:var(--s3); margin-top:var(--s3)}
-.serie-cab{display:flex; justify-content:space-between; gap:var(--s2); font-size:var(--t-xs)}
+.serie-cab{display:flex; justify-content:space-between; align-items:baseline; gap:var(--s2); font-size:var(--t-xs)}
+/* El estado va en un solo renglón: el ícono de alerta es display:block (como todos) y partía el texto en tres. */
+.serie-cab span{white-space:nowrap}
+.serie-cab .ico-h{display:inline-block; vertical-align:-2px}
 .serie-cab b{font-size:var(--t-sm)}
 .serie-pista{position:relative; height:10px; margin-top:var(--s1); background:var(--surface-2); border-radius:99px; overflow:hidden}
 .serie-franja{position:absolute; top:0; bottom:0; background:color-mix(in srgb, var(--good) 30%, transparent)}
@@ -1133,6 +1140,10 @@ body.reloj-abierto{overflow:hidden}
 .pomo-fase{text-align:center; font-weight:700}
 .pomo-opc{display:flex; gap:var(--s3); flex-wrap:wrap; margin-top:var(--s3)}
 .pomo-opc .seg{flex:1; min-width:150px}
+/* Sin ancho mínimo fijo: si con un tiempo elegido con la ruedita no entran, el grupo baja de renglón. */
+.pomo-grupo{flex:1 1 150px; display:flex; flex-direction:column; gap:var(--s1)}
+.pomo-grupo .seg{min-width:0}
+.pomo-grupo .seg button{min-width:52px; white-space:nowrap}
 
 /* ---- Exámenes ---- */
 .examen .bar{margin-top:var(--s2)}
@@ -3735,6 +3746,7 @@ function viewGym(){
         <span><i class="sw"></i>hoy / ayer</span>
         <span><i class="sw late"></i>late: tu grupo más atrasado</span>
       </div>
+      <div class="xs dim center" style="margin-top:var(--s1)">la transparencia es cuánto hace que lo entrenaste</div>
       <div class="mgrid mt4">
         ${MUSCLE_IDS.map(id => {
           const d = g.m[id];
@@ -4076,8 +4088,11 @@ function iconoHabitoHTML(hb, tam = 24){
 }
 
 /* Cabecera común: ícono, nombre (abre el detalle) y la racha. */
-function habCabHTML(hb, derecha, abre = true, marca = '', salteo = false){
-  const sub = `${salteo ? 'Salteado · ' : ''}${frecuenciaTexto(hb)} · racha ${habitStreak(hb.id)} · mejor ${habitBestStreak(hb.id)} · ${Math.round(habitRate30(hb.id) * 100)}% en 30 días`;
+/* `corto`: en las tarjetas de Hoy la racha ya está en la llama, y "mejor" y el % viven en el
+   detalle; ahí el subtítulo es solo la frecuencia (como Streaks o HabitKit: nombre y un dato). */
+function habCabHTML(hb, derecha, abre = true, marca = '', salteo = false, corto = false){
+  const sub = `${salteo ? 'Salteado · ' : ''}${frecuenciaTexto(hb)}` + (corto ? ''
+    : ` · racha ${habitStreak(hb.id)} · mejor ${habitBestStreak(hb.id)} · ${Math.round(habitRate30(hb.id) * 100)}% en 30 días`);
   const cuerpo = `<b>${esc(hb.name)}</b><span class="hab-sub">${abre ? sub : esc(hb.desc || '')}</span>`;
   return `<div class="hab-cab">${marca}
     <span class="hab-ico" aria-hidden="true">${iconoHabitoHTML(hb, 26)}</span>
@@ -4131,14 +4146,14 @@ function filaHoyHTML(hb, dia = habDia || iso()){
     const ok = hecho(hb.id, dia);
     const chk = `<button class="chk" data-act="toggle-day" data-habit="${id}" data-day="${dia}"
       aria-pressed="${ok}" aria-label="${ok ? 'Desmarcar' : 'Marcar'} ${esc(hb.name)} ${de}">${ICONO_CHECK}</button>`;
-    return `${abre}${habCabHTML(hb, llamaHTML(hb) + saltar + chk, true, marca, sk)}</div></div>`;
+    return `${abre}${habCabHTML(hb, llamaHTML(hb) + saltar + chk, true, marca, sk, true)}</div></div>`;
   }
   const v = valorDia(hb.id, dia), meta = metaDia(hb, dia) || Number(hb.meta), paso = fmtV(pasoDe(hb));
   // El temporizador registra en el día en que se empieza: solo se ofrece hoy.
   const play = esTiempo(hb) && dia === iso() ? `<button class="chk play" data-act="hab-reloj" data-habit="${id}"
       aria-label="${habTimer && habTimer.id === hb.id ? 'Ver el temporizador de' : 'Empezar el temporizador de'} ${esc(hb.name)}">${habTimer && habTimer.id === hb.id ? iconoSVG('reloj',16) : icoT(IT.play,16)}</button>` : '';
   return `${abre}
-    ${habCabHTML(hb, llamaHTML(hb) + play, true, marca, sk)}
+    ${habCabHTML(hb, llamaHTML(hb) + play, true, marca, sk, true)}
     <div class="hab-cant">
       <button class="chk sm" data-act="valor-paso" data-habit="${id}" data-day="${dia}" data-d="-1" aria-label="Restar ${paso}">−</button>
       <div class="hab-valor" aria-live="polite"><b>${fmtV(v)}</b> / ${fmtV(meta)}<small>${esc(hb.unidad || '')}</small></div>
@@ -7888,7 +7903,9 @@ function pomoHTML(){
     // Si con la ruedita se eligió otra duración, aparece como un botón más (marcado).
     const seg = (clave, base) => { const opciones = base.includes(pomoForm[clave]) ? base : base.concat([pomoForm[clave]]);
       return `<div class="seg" role="group" aria-label="${clave === 'foco' ? 'Duración del foco' : 'Duración del descanso'}">${opciones.map(m =>
-      `<button type="button" data-act="pomo-opc" data-k="${clave}" data-v="${m}" aria-pressed="${pomoForm[clave] === m}">${clave === 'foco' ? m + ' min' : m ? m + ' de descanso' : 'sin descanso'}</button>`).join('')}</div>`; };
+      `<button type="button" data-act="pomo-opc" data-k="${clave}" data-v="${m}" aria-pressed="${pomoForm[clave] === m}">${m ? m + ' min' : 'sin descanso'}</button>`).join('')}</div>`; };
+    // "10 de descanso" no entraba en el botón: el rótulo va arriba y el botón dice solo los minutos.
+    const grupo = (rot, clave, base) => `<div class="pomo-grupo"><span class="xs muted">${rot}</span>${seg(clave, base)}</div>`;
     return `<div class="card mt4" id="pomo">
       <h2>Pomodoro</h2>
       <p class="xs muted mt3">Elegí la materia y arrancá. Cuando termina el bloque, la sesión se guarda sola.</p>
@@ -7900,7 +7917,7 @@ function pomoHTML(){
           <input id="pomo-tema" list="pomo-temas" maxlength="80" value="${esc(pomoForm.tema || '')}" placeholder="Límites">
           <datalist id="pomo-temas">${temas.map(t => `<option value="${esc(t)}">`).join('')}</datalist></div>
       </div>
-      <div class="pomo-opc">${seg('foco', POMO_FOCO)}${seg('descanso', POMO_DESC)}</div>
+      <div class="pomo-opc">${grupo('Foco', 'foco', POMO_FOCO)}${grupo('Descanso', 'descanso', POMO_DESC)}</div>
       <div class="row wrap mt3">
         <button class="btn primary" data-act="pomo-iniciar">▶ Empezar ${pomoForm.foco} min</button>
         <button class="btn" data-act="pomo-otro">Otro tiempo…</button>
